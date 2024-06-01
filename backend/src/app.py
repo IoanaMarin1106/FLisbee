@@ -6,6 +6,7 @@ from config import config
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from bson.objectid import ObjectId
 import bcrypt
+import uuid
 
 app = Flask(__name__)
 app.config["MONGO_URI"] = config["MONGO_URI"]
@@ -16,7 +17,7 @@ CORS(app)
 client = MongoClient(config["MONGO_URI"])
 db = client['flMongoDb']
 users = db['users']
-
+workflows = db["workflows"]
 
 # Start Debugging
 if client:
@@ -57,6 +58,40 @@ def login():
 
     access_token = create_access_token(identity=str(user["_id"]))
     return jsonify(access_token=access_token, username=email), 200
+
+@app.route("/workflows/count", methods=["GET"])
+def get_workflows_count():
+    count = workflows.count_documents({})
+    return jsonify({"count": count})
+
+@app.route("/workflows/getAll", methods=["GET"])
+def get_all_workflows():
+    all_workflows = list(workflows.find({}))
+    workflows_list = []
+    for workflow in all_workflows:
+        workflows_list.append({
+            "id": str(workflow["wid"]),
+            "name": workflow["name"]
+        })
+    return jsonify(workflows_list)
+
+# TODO: update the method after decide details about workflows
+@app.route("/workflows/insert", methods=["POST"])
+def insert_workflow():
+    name = request.json.get("name", None)
+    id
+    print(name)
+    if not name:
+        return jsonify({"msg": "Missing workflow name"}), 400
+    
+    workflow = workflows.find_one({"name": name})
+    if workflow:
+        return jsonify({"msg": "Workflow already registered"}), 400
+
+    workflow_id = str(uuid.uuid4())
+    workflows.insert_one({"wid": workflow_id, "name": name})
+    return jsonify({"msg": "Workflow created", "id": workflow_id}), 201
+
 
 if __name__ == "__main__":
     app.run(debug=True)
