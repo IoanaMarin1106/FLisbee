@@ -5,6 +5,9 @@ export const loginUser = createAsyncThunk(
   'auth/loginUser',
   async ({ email, password }) => {
     const response = await axios.post('http://localhost:5000/login', { email, password });
+    const { access_token, username } = response.data;
+    localStorage.setItem('token', access_token); // Save token in local storage
+    localStorage.setItem('username', username); // Save username in local storage
     return response.data;
   }
 );
@@ -16,6 +19,7 @@ export const registerUser = createAsyncThunk(
     return response.data;
   }
 );
+
 
 const authSlice = createSlice({
   name: 'auth',

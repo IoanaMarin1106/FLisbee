@@ -56,14 +56,7 @@ def login():
         return jsonify({"msg": "Bad email or password"}), 401
 
     access_token = create_access_token(identity=str(user["_id"]))
-    return jsonify(access_token=access_token), 200
-
-@app.route("/protected", methods=["GET"])
-@jwt_required()
-def protected():
-    current_user_id = get_jwt_identity()
-    user = users.find_one({"_id": ObjectId(current_user_id)})
-    return jsonify(logged_in_as=user["email"]), 200
+    return jsonify(access_token=access_token, username=email), 200
 
 if __name__ == "__main__":
     app.run(debug=True)
