@@ -1,15 +1,7 @@
 # FLisbee
 Repository for providing a FLaaS platform.
 
-<img
-    src="./docs/images/flaskreact.png"
-/>
-
-### 🐍⚛️ Python + React
-A fullstack application for managing users. Backend was developed with Flask and MongoDB, and the Frontend, uses React with Bootstrap. 
-
-
-### ⚡️ Backend
+### Backend
 
 Installation:
 ```
