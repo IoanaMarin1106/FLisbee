@@ -6,7 +6,6 @@ export const getWorkflowsCount = createAsyncThunk(
   async () => {
     try {
       const response = await axios.get('http://localhost:5000/workflows/count');
-      console.log(response.data.count);
       return response.data.count;
     } catch (error) {
       throw Error('Failed to fetch workflows count');
@@ -35,15 +34,30 @@ export const fetchAllWorkflows = createAsyncThunk(
 );
 
 export const deleteWorkflow = createAsyncThunk('workflows/deleteWorkflow', async (id) => {
-  console.log(id)
   await axios.delete(`http://localhost:5000/workflows/delete/${id}`);
   return id;
+});
+
+export const getWorkflowState = createAsyncThunk('workflows/getWorkflowState', async (id) => {
+  const response = await axios.get(`http://localhost:5000/workflows/state/${id}`);
+  return response.data.state;
+});
+
+export const cancelWorkflow = createAsyncThunk('workflow/cancelWorkflow', async (id) => {
+  const response = await axios.post(`http://localhost:5000/workflows/cancel/${id}`);
+  return response.data; 
+});
+
+export const runWorkflow = createAsyncThunk('workflow/runWorkflow', async (id) => {
+  const response = await axios.post(`http://localhost:5000/workflows/run/${id}`);
+  return response.data; 
 });
 
 const workflowsSlice = createSlice({
   name: 'workflows',
   initialState: {
     count: 0,
+    state: 'idle',
     status: 'idle',
     error: null,
   },
@@ -76,7 +90,17 @@ const workflowsSlice = createSlice({
       .addCase(registerWorkflow.rejected, (state, action) => {
         state.error = action.error.message;
         state.status = 'failed';
-      });
+      })
+      .addCase(getWorkflowState.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        state.state = action.payload.state;
+      })
+      .addCase(cancelWorkflow.fulfilled, (state, action) => {
+        console.log(action.payload);
+      })
+      .addCase(runWorkflow.fulfilled, (state, action) => {
+        console.log(action.payload);
+      });    
   },
 });
 

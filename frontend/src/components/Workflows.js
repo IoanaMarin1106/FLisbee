@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { getWorkflowsCount, registerWorkflow, fetchAllWorkflows, deleteWorkflow } from '../features/workflows/workflowsSlice';
 import {
-  Typography, Button, Grid, IconButton, Paper, AppBar, Toolbar, Box, Card, CardContent, CardActions,
-  Table, TableContainer, TableBody, TableRow, TableCell, Chip, Dialog, DialogTitle, DialogContent, DialogActions, TextField
+  Typography, Button, Grid, IconButton, AppBar, Toolbar, Box, Card, CardContent, CardActions,
+  Chip, Dialog, DialogTitle, DialogContent, DialogActions, TextField
 } from '@material-ui/core';
 import AddIcon from '@material-ui/icons/Add';
 import EditIcon from '@material-ui/icons/Edit';
@@ -13,6 +13,7 @@ import DeleteIcon from '@material-ui/icons/Delete';
 import ArrowBackIcon from '@material-ui/icons/ArrowBack';
 import LogsCard from './LogsCard';
 import { makeStyles } from '@material-ui/core/styles';
+import { getWorkflowState, cancelWorkflow, runWorkflow } from '../features/workflows/workflowsSlice';
 
 const useStyles = makeStyles((theme) => ({
   container: {
@@ -109,6 +110,15 @@ const Workflows = () => {
   const [selectedWorkflow, setSelectedWorkflow] = useState(null);
   const [showOverview, setShowOverview] = useState(false);
   const [showLogs, setShowLogs] = useState(false);
+  const [workflowState, setWorkflowState] = useState(null);
+
+  useEffect(() => {
+    if (selectedWorkflow) {
+      dispatch(getWorkflowState(selectedWorkflow.id)).then((response) => {
+        setWorkflowState(response.payload);
+      });
+    }
+  }, [selectedWorkflow, dispatch]);
 
   useEffect(() => {
     dispatch(getWorkflowsCount());
@@ -161,6 +171,16 @@ const Workflows = () => {
     setShowLogs(!showLogs);
   };
 
+  const handleCancelWorkflow = async (id) => {
+    await dispatch(cancelWorkflow(id));
+      console.log("cancel workflow");
+  };
+  
+  const handleRunWorkflow = async (id) => {
+    await dispatch(runWorkflow(id));
+      console.log("run workflow");
+  };
+
   return (
     <Grid container justifyContent="center" alignItems="center" className={classes.container}>
       <AppBar position="static" className={classes.appBar}>
@@ -196,9 +216,6 @@ const Workflows = () => {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseDialog} color="primary">
-            Cancel
-          </Button>
           <Button onClick={handleAddWorkflowSubmit} color="primary">
             Submit
           </Button>
@@ -225,15 +242,22 @@ const Workflows = () => {
                   <div>
                     <Typography variant="body1">{`ID: ${selectedWorkflow.id}`}</Typography>
                     <Typography variant="body1">{`Name: ${selectedWorkflow.name}`}</Typography>
-                    <Typography variant="body1">{`Status: running`}</Typography>
+                    <Typography variant="body1">{`Status: ${workflowState}`}</Typography>
                   </div>
                   <div className={classes.buttonsContainer}>
                     <Button startIcon={<EditIcon />} color="primary" onClick={() => {}}>
                       Edit
                     </Button>
-                    <Button startIcon={<CancelIcon />} onClick={() => setSelectedWorkflow(null)} color="secondary">
-                      Cancel
-                    </Button>
+                    {(workflowState === 'running' || workflowState === 'pending') && (
+                      <Button startIcon={<CancelIcon />} onClick={() => handleCancelWorkflow(selectedWorkflow.id)} color="secondary">
+                        Cancel
+                      </Button>
+                    )}
+                    {workflowState === 'created' && (
+                      <Button startIcon={<PlayArrowIcon />} onClick={() => handleRunWorkflow(selectedWorkflow.id)} color="secondary">
+                        Run
+                      </Button>
+                    )}
                   </div>
                 </div>
                 <Chip

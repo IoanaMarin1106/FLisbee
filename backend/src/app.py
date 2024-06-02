@@ -94,12 +94,35 @@ def insert_workflow():
 
 @app.route("/workflows/delete/<workflow_id>", methods=["DELETE"])
 def delete_workflow(workflow_id):
-    print("delete")
     result = workflows.delete_one({"wid": workflow_id})
     if result.deleted_count == 1:
         return jsonify({"msg": "Workflow deleted"}), 200
     else:
         return jsonify({"msg": "Workflow not found"}), 404
+    
+@app.route("/workflows/state/<workflow_id>", methods=["GET"])
+def get_workflow_state(workflow_id):
+    print(workflow_id)
+    if (workflow_id == "6c482d89-7667-407c-803f-193c7e21807d"):
+        return jsonify({"state": "running"}), 200
+    elif (workflow_id == "5f10d6d4-e260-4a56-aa0b-01c6bb57b2d6"):
+        return jsonify({"state": "created"}), 200
+    elif (workflow_id == "95e6f638-60a6-49c0-90ea-b1cab1adcf43"):
+        return jsonify({"state": "pending"}), 200   
+
+@app.route("/workflows/cancel/<workflow_id>", methods=["POST"])    
+def cancel_workflow(workflow_id):
+    # Here you can add the logic to cancel the workflow with the given ID
+    # Change its state to "canceled"
+    # For now, let's just return a simple message
+    return jsonify({"message": f"Workflow {workflow_id} is canceled"}), 200
+
+@app.route("/workflows/run/<workflow_id>", methods=["POST"])    
+def run_workflow(workflow_id):
+    # Here you can add the logic to run the workflow with the given ID
+    # Change its state to 'running'
+    # For now, let's just return a simple message
+    return jsonify({"message": f"Workflow {workflow_id} is canceled"}), 200
 
 if __name__ == "__main__":
     app.run(debug=True)
