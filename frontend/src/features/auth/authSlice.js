@@ -20,12 +20,14 @@ export const registerUser = createAsyncThunk(
   }
 );
 
-
 const authSlice = createSlice({
   name: 'auth',
   initialState: { user: null, token: null, status: 'idle', error: null },
   reducers: {
     logout(state) {
+      console.log("aiciii");
+      localStorage.removeItem('token');
+      localStorage.removeItem('username');
       state.user = null;
       state.token = null;
     },

@@ -5,10 +5,13 @@ import UserMenu from './UserMenu';
 import Workflows from './Workflows';
 import Models from './Models';
 import ProjectOverview from './ProjectOverview';
+import { Navigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 
 const MainLayout = () => {
   const [view, setView] = useState('projectoverview');
   const username = localStorage.getItem('username');
+  const token = useSelector((state) => state.auth.token);
 
   const handleProjectClick = () => {
     setView('projectoverview');
@@ -21,6 +24,11 @@ const MainLayout = () => {
   const handleModelsClick = () => {
     setView('models');
   };
+
+  console.log("aici: " + token);
+  if (token == null) {
+    return <Navigate to="/login" />;
+  }
 
   return (
     <Box display="flex" height="100vh">

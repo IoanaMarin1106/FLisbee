@@ -112,6 +112,8 @@ const Workflows = () => {
   const [showLogs, setShowLogs] = useState(false);
   const [workflowState, setWorkflowState] = useState(null);
 
+  const token = useSelector((state) => state.auth.token);
+
   useEffect(() => {
     if (selectedWorkflow) {
       dispatch(getWorkflowState(selectedWorkflow.id)).then((response) => {
