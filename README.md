@@ -5,6 +5,8 @@ Repository for providing a FLaaS platform.
 
 Installation:
 ```
+export SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(16))') # Generate a random secret key
+
 pip install Flask Flask-Cors Flask-JWT-Extended pymongo bcrypt
 
 cd backend

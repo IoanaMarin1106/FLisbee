@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { loginUser } from '../features/auth/authSlice';
 import { Navigate } from 'react-router-dom';
-import { TextField, Button, Typography, Container, Link, Box, IconButton, InputAdornment } from '@material-ui/core';
+import { TextField, Button, Typography, Container, Link, Box, IconButton, InputAdornment, Dialog, DialogTitle, DialogContent, DialogActions } from '@material-ui/core';
 import { makeStyles } from '@material-ui/core/styles';
-import { Visibility, VisibilityOff } from '@material-ui/icons'; // Import eye icons
+import { Visibility, VisibilityOff } from '@material-ui/icons'; 
 
 const useStyles = makeStyles(theme => ({
   root: {
@@ -45,15 +45,37 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false); // State to toggle password visibility
+  const [showDialog, setShowDialog] = useState(false); // State to control dialog visibility
   const token = useSelector((state) => state.auth.token);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    dispatch(loginUser({ email, password }));
+    const confirmed = await checkEmailConfirmation(email);
+    if (confirmed) {
+      dispatch(loginUser({ email, password }));
+    } else {
+      setShowDialog(true);
+    }
+  };
+
+  const checkEmailConfirmation = async (email) => {
+    try {
+      const response = await fetch(`http://localhost:5000/confirmed/${email}`);
+      const data = await response.json();
+      console.log("aici " + data);
+      return data.conf;
+    } catch (error) {
+      console.error('Error checking email confirmation:', error);
+      return false;
+    }
   };
 
   const handleTogglePasswordVisibility = () => {
     setShowPassword((prevShowPassword) => !prevShowPassword);
+  };
+
+  const handleDialogClose = () => {
+    setShowDialog(false); // Close dialog when cancel button is clicked
   };
 
   if (token) {
@@ -116,6 +138,15 @@ const Login = () => {
           </form>
         </Box>
       </Container>
+      <Dialog open={showDialog} onClose={handleDialogClose}>
+        <DialogTitle>Confirm Email</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1">Please confirm your email before logging in.</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDialogClose} color="primary">Cancel</Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 };

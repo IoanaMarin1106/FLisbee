@@ -1,23 +1,36 @@
 from flask import Flask, request, jsonify
-from flask_pymongo import ObjectId
 from pymongo import MongoClient
 from flask_cors import CORS
 from config import config
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
-from bson.objectid import ObjectId
+from flask_jwt_extended import JWTManager, create_access_token
 import bcrypt
 import uuid
+import os
+from itsdangerous import URLSafeTimedSerializer, SignatureExpired
+import smtplib
+from email.mime.text import MIMEText
+from flask import url_for
 
 app = Flask(__name__)
 app.config["MONGO_URI"] = config["MONGO_URI"]
 app.config['JWT_SECRET_KEY'] = config["JWT_SECRET_KEY"]
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
 jwt = JWTManager(app)
+
+s = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 
 CORS(app)
 client = MongoClient(config["MONGO_URI"])
 db = client['flMongoDb']
 users = db['users']
 workflows = db["workflows"]
+
+# email
+HOST = "smtp.gmail.com"
+PORT = 587
+FROM_EMAIL = "solveitinfo0@gmail.com"
+FROM_EMAIL_PASSW = "testSolveIt12345"
+TO_EMAIL = "marinvioana@gmail.com"
 
 # Start Debugging
 if client:
@@ -42,8 +55,10 @@ def register():
         return jsonify({"msg": "Email already registered"}), 400
 
     hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-    user_id = users.insert_one({"email": email, "password": hashed_password}).inserted_id
-    return jsonify({"msg": "User created", "id": str(user_id)}), 201
+    email_confirmed = False
+    user_id = users.insert_one({"email": email, "password": hashed_password, "email_confirmed": email_confirmed}).inserted_id
+    send_confirmation_email(email)
+    return jsonify({"msg": "User created. Please check your email to confirm your address.", "id": str(user_id)}), 201
 
 @app.route("/login", methods=["POST"])
 def login():
@@ -58,6 +73,29 @@ def login():
 
     access_token = create_access_token(identity=str(user["_id"]))
     return jsonify(access_token=access_token, username=email), 200
+    
+@app.route('/confirmed/<email>', methods=["GET"])
+def get_user_confirmation_status(email):
+    user = users.find_one({"email": email})
+    if not user:
+        return jsonify({"msg": "Bad email."}), 401
+    
+    return jsonify({"conf": user["email_confirmed"]}), 200
+
+from flask import jsonify
+
+@app.route('/confirm/<email>', methods=["GET"])
+def confirm_user_email(email):
+    user = users.find_one({"email": email})
+    if not user:
+        return jsonify({"msg": "User not found."}), 404
+    
+    # Update email_confirmed to true
+    user['email_confirmed'] = True
+    # Save the changes
+    users.update_one({"email": email}, {"$set": user})
+    
+    return jsonify({"msg": "Email confirmed successfully."}), 200
 
 @app.route("/workflows/count", methods=["GET"])
 def get_workflows_count():
@@ -123,6 +161,28 @@ def run_workflow(workflow_id):
     # Change its state to 'running'
     # For now, let's just return a simple message
     return jsonify({"message": f"Workflow {workflow_id} is canceled"}), 200
+
+def send_confirmation_email(user_email):
+    token = s.dumps(user_email, salt='email-confirm')
+    confirm_url = f'http://localhost:3007/confirm/{user_email}/{token}'
+    print(confirm_url)
+    html = f'''
+        <h2>Welcome to Flisbee!</h2>
+        <p>Congratulations on joining our community!</p>
+        <p>To get started, please click the link below to confirm your email address:</p>
+        <p><a href="{confirm_url}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Confirm Email</a></p>
+        <p>Thank you for choosing Flisbee! We can't wait for you to explore all the amazing features.</p>
+        <p>Happy exploring!</p>
+    '''
+    msg = MIMEText(html, 'html')
+    msg['Subject'] = 'Confirm your email'
+    msg['From'] = FROM_EMAIL
+    msg['To'] = user_email
+
+    with smtplib.SMTP(HOST, PORT) as server:
+        server.starttls()
+        server.login(FROM_EMAIL, "unmnmgdudjqhtcqf")
+        server.sendmail(msg['From'], [msg['To']], msg.as_string())
 
 if __name__ == "__main__":
     app.run(debug=True)

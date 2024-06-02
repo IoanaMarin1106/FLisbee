@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { registerUser } from '../features/auth/authSlice';
-import { Navigate } from 'react-router-dom';
 import { TextField, Button, Typography, Container, Link, Box } from '@material-ui/core';
 import { makeStyles } from '@material-ui/core/styles';
+import EmailConfirmation from './EmailConfirmation';
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -44,7 +44,7 @@ const Register = () => {
   };
 
   if (isRegistered) {
-    return <Navigate to="/login" />;
+    return <EmailConfirmation />;
   }
 
   return (
