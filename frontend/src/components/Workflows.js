@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { getWorkflowsCount, registerWorkflow, fetchAllWorkflows, deleteWorkflow } from '../features/workflows/workflowsSlice';
-import { Typography, Button, Grid, IconButton, Paper, AppBar, Toolbar, Box, Card, CardContent, CardActions, Table, TableContainer, TableBody, TableRow, TableCell, Chip, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@material-ui/core';
+import {
+  Typography, Button, Grid, IconButton, Paper, AppBar, Toolbar, Box, Card, CardContent, CardActions,
+  Table, TableContainer, TableBody, TableRow, TableCell, Chip, Dialog, DialogTitle, DialogContent, DialogActions, TextField
+} from '@material-ui/core';
 import AddIcon from '@material-ui/icons/Add';
+import EditIcon from '@material-ui/icons/Edit';
+import CancelIcon from '@material-ui/icons/Stop';
 import PlayArrowIcon from '@material-ui/icons/PlayArrow';
 import DeleteIcon from '@material-ui/icons/Delete';
 import ArrowBackIcon from '@material-ui/icons/ArrowBack';
+import LogsCard from './LogsCard';
 import { makeStyles } from '@material-ui/core/styles';
-import Breadcrumbs from '@material-ui/core/Breadcrumbs';
-import Link from '@material-ui/core/Link';
 
 const useStyles = makeStyles((theme) => ({
   container: {
@@ -83,6 +87,15 @@ const useStyles = makeStyles((theme) => ({
   breadcrumbText: {
     marginRight: theme.spacing(1),
   },
+  detailsHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  buttonsContainer: {
+    display: 'flex',
+    gap: theme.spacing(1),
+  },
 }));
 
 const Workflows = () => {
@@ -120,7 +133,8 @@ const Workflows = () => {
     setWorkflowNameInput('');
   };
 
-  const handleDeleteWorkflow = (id) => {
+  const handleDeleteWorkflow = (id, e) => {
+    e.stopPropagation(); // Prevents the click event from bubbling up to the card
     dispatch(deleteWorkflow(id)).then(() => {
       dispatch(getWorkflowsCount());
       dispatch(fetchAllWorkflows());
@@ -129,7 +143,7 @@ const Workflows = () => {
 
   const handleWorkflowClick = (workflow) => {
     setSelectedWorkflow(workflow);
-    setShowOverview(false);
+    setShowOverview(true);
     setShowLogs(false);
   };
 
@@ -167,7 +181,7 @@ const Workflows = () => {
           )}
         </Toolbar>
       </AppBar>
-        <Dialog open={showAddWorkflowDialog} onClose={handleCloseDialog} aria-labelledby="form-dialog-title">
+      <Dialog open={showAddWorkflowDialog} onClose={handleCloseDialog} aria-labelledby="form-dialog-title">
         <DialogTitle id="form-dialog-title">Add New Workflow</DialogTitle>
         <DialogContent>
           <TextField
@@ -207,21 +221,35 @@ const Workflows = () => {
           {selectedWorkflow ? (
             <Card className={classes.detailsCard} elevation={5}>
               <CardContent>
-                <Typography variant="body1">{`ID: ${selectedWorkflow.id}`}</Typography>
-                <Typography variant="body1">{`Name: ${selectedWorkflow.name}`}</Typography>
+                <div className={classes.detailsHeader}>
+                  <div>
+                    <Typography variant="body1">{`ID: ${selectedWorkflow.id}`}</Typography>
+                    <Typography variant="body1">{`Name: ${selectedWorkflow.name}`}</Typography>
+                    <Typography variant="body1">{`Status: running`}</Typography>
+                  </div>
+                  <div className={classes.buttonsContainer}>
+                    <Button startIcon={<EditIcon />} color="primary" onClick={() => {}}>
+                      Edit
+                    </Button>
+                    <Button startIcon={<CancelIcon />} onClick={() => setSelectedWorkflow(null)} color="secondary">
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
                 <Chip
                   label="Overview"
                   onClick={handleOverviewClick}
-                  style={{ margin: '20px 20px 20px 0px' }}
+                  style={{ margin: '20px 20px 20px 0px', width: '90px', height: '50px' }}
                   color={showOverview ? "primary" : "default"}
                 />
                 <Chip
                   label="Logs"
+                  style={{ margin: '20px 20px 20px 0px', width: '90px', height: '50px' }}
                   onClick={handleLogsClick}
                   color={showLogs ? "primary" : "default"}
                 />
                 {showOverview && (
-                  <Grid container spacing={2} style={{ marginTop: '20px' }}>
+                  <Grid container spacing={2}>
                     <Grid item xs={6}>
                       <Card elevation={5}>
                         <CardContent>
@@ -243,24 +271,11 @@ const Workflows = () => {
                   </Grid>
                 )}
                 {showLogs && (
-                  <Card elevation={5}>
-                    <CardContent>
-                      <Typography variant="body1">Started FedAvg</Typography>
-                      <Typography variant="body1">Started FedAvg</Typography>
-                      <Typography variant="body1">Started FedAvg</Typography>
-                      <Typography variant="body1">Started FedAvg</Typography>
-                    </CardContent>
-                  </Card>
+                  <div>
+                                        <LogsCard logs="HERE WILL BE LOGS" />
+                  </div>
                 )}
               </CardContent>
-              <CardActions>
-                <Button onClick={() => {}} color="primary">
-                  Edit
-                </Button>
-                <Button onClick={() => setSelectedWorkflow(null)} color="primary">
-                  Cancel
-                </Button>
-              </CardActions>
             </Card>
           ) : (
             workflowsCount === 0 ? (
@@ -280,7 +295,7 @@ const Workflows = () => {
                       <IconButton color="primary">
                         <PlayArrowIcon />
                       </IconButton>
-                      <IconButton color="secondary" onClick={() => handleDeleteWorkflow(workflow.id)}>
+                      <IconButton color="secondary" onClick={(e) => handleDeleteWorkflow(workflow.id, e)}>
                         <DeleteIcon />
                       </IconButton>
                     </CardActions>
@@ -296,4 +311,5 @@ const Workflows = () => {
 };
 
 export default Workflows;
-    
+
+                 
