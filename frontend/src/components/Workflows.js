@@ -176,7 +176,8 @@ const Workflows = () => {
       console.log("cancel workflow");
   };
   
-  const handleRunWorkflow = async (id) => {
+  const handleRunWorkflow = async (id, e) => {
+    e.stopPropagation(); // Prevents the click event from bubbling up to the card
     await dispatch(runWorkflow(id));
       console.log("run workflow");
   };
@@ -316,7 +317,7 @@ const Workflows = () => {
                       <Typography variant="body1">{workflow.name}</Typography>
                     </div>
                     <CardActions className={classes.workflowActions}>
-                      <IconButton color="primary">
+                      <IconButton color="primary" onClick={(e) => handleRunWorkflow(workflow.id, e)}>
                         <PlayArrowIcon />
                       </IconButton>
                       <IconButton color="secondary" onClick={(e) => handleDeleteWorkflow(workflow.id, e)}>
