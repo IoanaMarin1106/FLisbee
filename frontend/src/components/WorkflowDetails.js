@@ -1,6 +1,5 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import Breadcrumb from './Breadcrumb';
 import { Card, CardContent, Button } from '@material-ui/core';
 
 const WorkflowDetails = () => {
@@ -8,7 +7,6 @@ const WorkflowDetails = () => {
 
   return (
     <div>
-      <Breadcrumb workflowId={workflowId} />
       <Card>
         <CardContent>ID: {workflowId}</CardContent>
       </Card>

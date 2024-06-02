@@ -7,6 +7,9 @@ import PlayArrowIcon from '@material-ui/icons/PlayArrow';
 import DeleteIcon from '@material-ui/icons/Delete';
 import ArrowBackIcon from '@material-ui/icons/ArrowBack';
 import { makeStyles } from '@material-ui/core/styles';
+import Breadcrumbs from '@material-ui/core/Breadcrumbs';
+import Link from '@material-ui/core/Link';
+import Chip from '@material-ui/core/Chip';
 
 const useStyles = makeStyles((theme) => ({
   container: {
@@ -158,10 +161,14 @@ const Workflows = () => {
         <Box mt={2}>
           {selectedWorkflow ? (
             <Box className={classes.breadcrumb}>
-              <IconButton onClick={handleBreadcrumbClick} color="primary">
-                <ArrowBackIcon />
-              </IconButton>
-              <Typography variant="body1" className={classes.breadcrumbText}>Workflows > {selectedWorkflow.id}</Typography>
+              <Chip
+                className={classes.chip}
+                icon={<ArrowBackIcon />}
+                label="Workflows"
+                clickable
+                onClick={handleBreadcrumbClick}
+                color="primary"
+              />
             </Box>
           ) : null}
           {selectedWorkflow ? (
