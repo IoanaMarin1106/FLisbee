@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { getWorkflowsCount, registerWorkflow, fetchAllWorkflows, deleteWorkflow } from '../features/workflows/workflowsSlice';
-import { Typography, Button, Grid, IconButton, Paper, AppBar, Toolbar, Box, Card, CardContent, CardActions } from '@material-ui/core';
+import { Typography, Button, Grid, IconButton, Paper, AppBar, Toolbar, Box, Card, CardContent, CardActions, Table, TableContainer, TableBody, TableRow, TableCell, Chip, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@material-ui/core';
 import AddIcon from '@material-ui/icons/Add';
 import PlayArrowIcon from '@material-ui/icons/PlayArrow';
 import DeleteIcon from '@material-ui/icons/Delete';
@@ -9,12 +9,11 @@ import ArrowBackIcon from '@material-ui/icons/ArrowBack';
 import { makeStyles } from '@material-ui/core/styles';
 import Breadcrumbs from '@material-ui/core/Breadcrumbs';
 import Link from '@material-ui/core/Link';
-import Chip from '@material-ui/core/Chip';
 
 const useStyles = makeStyles((theme) => ({
   container: {
     minHeight: '10vh',
-    paddingTop: theme.spacing(4), // Adjusted to match AppBar double height
+    paddingTop: theme.spacing(4),
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
@@ -23,7 +22,7 @@ const useStyles = makeStyles((theme) => ({
   appBar: {
     position: 'relative',
     backgroundColor: theme.palette.primary.main,
-    height: theme.spacing(16), // Double height
+    height: theme.spacing(16),
     display: 'flex',
     justifyContent: 'center',
   },
@@ -93,8 +92,10 @@ const Workflows = () => {
   const allWorkflows = useSelector((state) => state.workflows.items) || [];
 
   const [showAddWorkflowDialog, setShowAddWorkflowDialog] = useState(false);
-  const [workflowName, setWorkflowName] = useState('');
+  const [workflowNameInput, setWorkflowNameInput] = useState('');
   const [selectedWorkflow, setSelectedWorkflow] = useState(null);
+  const [showOverview, setShowOverview] = useState(false);
+  const [showLogs, setShowLogs] = useState(false);
 
   useEffect(() => {
     dispatch(getWorkflowsCount());
@@ -102,24 +103,21 @@ const Workflows = () => {
   }, [dispatch]);
 
   const handleAddWorkflow = () => {
-    setWorkflowName(''); // Reset the TextField value
     setShowAddWorkflowDialog(true);
-  };
-
-  const handleWorkflowNameChange = (e) => {
-    setWorkflowName(e.target.value);
   };
 
   const handleCloseDialog = () => {
     setShowAddWorkflowDialog(false);
+    setWorkflowNameInput('');
   };
 
   const handleAddWorkflowSubmit = () => {
-    dispatch(registerWorkflow({ name: workflowName })).then(() => {
+    dispatch(registerWorkflow({ name: workflowNameInput })).then(() => {
       dispatch(getWorkflowsCount());
       dispatch(fetchAllWorkflows());
     });
     setShowAddWorkflowDialog(false);
+    setWorkflowNameInput('');
   };
 
   const handleDeleteWorkflow = (id) => {
@@ -131,10 +129,22 @@ const Workflows = () => {
 
   const handleWorkflowClick = (workflow) => {
     setSelectedWorkflow(workflow);
+    setShowOverview(false);
+    setShowLogs(false);
   };
 
   const handleBreadcrumbClick = () => {
     setSelectedWorkflow(null);
+  };
+
+  const handleOverviewClick = () => {
+    setShowOverview(!showOverview);
+    setShowLogs(false);
+  };
+
+  const handleLogsClick = () => {
+    setShowOverview(false);
+    setShowLogs(!showLogs);
   };
 
   return (
@@ -157,6 +167,29 @@ const Workflows = () => {
           )}
         </Toolbar>
       </AppBar>
+        <Dialog open={showAddWorkflowDialog} onClose={handleCloseDialog} aria-labelledby="form-dialog-title">
+        <DialogTitle id="form-dialog-title">Add New Workflow</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            id="name"
+            label="Workflow Name"
+            type="text"
+            fullWidth
+            value={workflowNameInput}
+            onChange={(e) => setWorkflowNameInput(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleAddWorkflowSubmit} color="primary">
+            Submit
+          </Button>
+        </DialogActions>
+      </Dialog>
       <Grid item xs={12} style={{ width: '100%' }}>
         <Box mt={2}>
           {selectedWorkflow ? (
@@ -172,17 +205,60 @@ const Workflows = () => {
             </Box>
           ) : null}
           {selectedWorkflow ? (
-            <Card className={classes.detailsCard}>
+            <Card className={classes.detailsCard} elevation={5}>
               <CardContent>
                 <Typography variant="body1">{`ID: ${selectedWorkflow.id}`}</Typography>
                 <Typography variant="body1">{`Name: ${selectedWorkflow.name}`}</Typography>
+                <Chip
+                  label="Overview"
+                  onClick={handleOverviewClick}
+                  style={{ margin: '20px 20px 20px 0px' }}
+                  color={showOverview ? "primary" : "default"}
+                />
+                <Chip
+                  label="Logs"
+                  onClick={handleLogsClick}
+                  color={showLogs ? "primary" : "default"}
+                />
+                {showOverview && (
+                  <Grid container spacing={2} style={{ marginTop: '20px' }}>
+                    <Grid item xs={6}>
+                      <Card elevation={5}>
+                        <CardContent>
+                          <Typography variant="body1">Name: {selectedWorkflow.name}</Typography>
+                          <Typography variant="body1">ID: {selectedWorkflow.id}</Typography>
+                          <Typography variant="body1">Hostname: Example</Typography>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                    <Grid item xs={6}>
+                      <Card elevation={5}>
+                        <CardContent>
+                          <Typography variant="body1">Model: Example Model</Typography>
+                          <Typography variant="body1">Avg method: Method</Typography>
+                          <Typography variant="body1">Training frequency: Once a week</Typography>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  </Grid>
+                )}
+                {showLogs && (
+                  <Card elevation={5}>
+                    <CardContent>
+                      <Typography variant="body1">Started FedAvg</Typography>
+                      <Typography variant="body1">Started FedAvg</Typography>
+                      <Typography variant="body1">Started FedAvg</Typography>
+                      <Typography variant="body1">Started FedAvg</Typography>
+                    </CardContent>
+                  </Card>
+                )}
               </CardContent>
               <CardActions>
-                <Button onClick={() => setSelectedWorkflow(null)} color="primary">
-                  Cancel
-                </Button>
                 <Button onClick={() => {}} color="primary">
                   Edit
+                </Button>
+                <Button onClick={() => setSelectedWorkflow(null)} color="primary">
+                  Cancel
                 </Button>
               </CardActions>
             </Card>
@@ -195,7 +271,7 @@ const Workflows = () => {
             ) : (
               allWorkflows.map((workflow) => (
                 <Card key={workflow.id} className={classes.workflowItem} onClick={() => handleWorkflowClick(workflow)}>
-                                    <CardContent className={classes.card}>
+                  <CardContent className={classes.card}>
                     <div className={classes.workflowInfo}>
                       <Typography variant="body1">{workflow.id}</Typography>
                       <Typography variant="body1">{workflow.name}</Typography>
@@ -220,4 +296,4 @@ const Workflows = () => {
 };
 
 export default Workflows;
-
+    

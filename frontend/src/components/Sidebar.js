@@ -17,7 +17,7 @@ const useStyles = makeStyles((theme) => ({
   },
   toolbar: theme.mixins.toolbar,
   flisbeeText: {
-    marginBottom: theme.spacing(2),
+    marginBottom: theme.spacing(1),
   },
 }));
 
