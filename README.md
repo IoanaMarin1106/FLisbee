@@ -1,7 +1,7 @@
 # FLisbee
 Repository for providing a FLaaS platform.
 
-### Backend
+### ⌨️ Backend
 
 Installation:
 ```
