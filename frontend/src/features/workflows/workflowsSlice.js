@@ -34,6 +34,12 @@ export const fetchAllWorkflows = createAsyncThunk(
   }
 );
 
+export const deleteWorkflow = createAsyncThunk('workflows/deleteWorkflow', async (id) => {
+  console.log(id)
+  await axios.delete(`http://localhost:5000/workflows/delete/${id}`);
+  return id;
+});
+
 const workflowsSlice = createSlice({
   name: 'workflows',
   initialState: {
@@ -59,6 +65,10 @@ const workflowsSlice = createSlice({
       })
       .addCase(fetchAllWorkflows.fulfilled, (state, action) => {
         state.items = action.payload;
+      })
+      .addCase(deleteWorkflow.fulfilled, (state, action) => {
+        state.items = state.items.filter((workflow) => workflow.id !== action.payload);
+        state.count -= 1;
       })
       .addCase(registerWorkflow.fulfilled, (state, action) => {
         state.status = 'succeeded';

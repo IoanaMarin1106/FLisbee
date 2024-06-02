@@ -92,6 +92,14 @@ def insert_workflow():
     workflows.insert_one({"wid": workflow_id, "name": name})
     return jsonify({"msg": "Workflow created", "id": workflow_id}), 201
 
+@app.route("/workflows/delete/<workflow_id>", methods=["DELETE"])
+def delete_workflow(workflow_id):
+    print("delete")
+    result = workflows.delete_one({"wid": workflow_id})
+    if result.deleted_count == 1:
+        return jsonify({"msg": "Workflow deleted"}), 200
+    else:
+        return jsonify({"msg": "Workflow not found"}), 404
 
 if __name__ == "__main__":
     app.run(debug=True)
