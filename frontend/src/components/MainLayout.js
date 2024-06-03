@@ -12,15 +12,17 @@ const MainLayout = () => {
   const [view, setView] = useState('');
   const username = localStorage.getItem('username');
   const location = useLocation();
-  const storedToken = localStorage.getItem('token');
+  const token = useSelector((state) => state.auth.token);
+  let storedToken = localStorage.getItem('token');
 
   useEffect(() => {
-    console.log(storedToken);
     if (storedToken) {
       const path = location.pathname;
       if (path === '/app') {
         setView('app');
       }
+    } else {
+      return <Navigate to="/login" />;
     }
   }, [location.pathname]);
 
@@ -36,8 +38,12 @@ const MainLayout = () => {
     setView('models');
   };
 
-  if (!storedToken) {
-    return <Navigate to="/app" />;
+  if (!token) {
+    storedToken = localStorage.getItem('token');
+    if (storedToken)
+      console.log("ar trb sa raman pe aceeasi pagina");
+    else if (storedToken == null)
+      return <Navigate to="/login" />;
   }
 
   return (
