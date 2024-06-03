@@ -1,17 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box } from '@material-ui/core';
 import Sidebar from './Sidebar';
 import UserMenu from './UserMenu';
 import Workflows from './Workflows';
 import Models from './Models';
 import ProjectOverview from './ProjectOverview';
-import { Navigate } from 'react-router-dom';
+import { useLocation, Navigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 
 const MainLayout = () => {
-  const [view, setView] = useState('projectoverview');
+  const [view, setView] = useState('');
   const username = localStorage.getItem('username');
-  const token = useSelector((state) => state.auth.token);
+  const location = useLocation();
+  const storedToken = localStorage.getItem('token');
+
+  useEffect(() => {
+    console.log(storedToken);
+    if (storedToken) {
+      const path = location.pathname;
+      if (path === '/app') {
+        setView('app');
+      }
+    }
+  }, [location.pathname]);
 
   const handleProjectClick = () => {
     setView('projectoverview');
@@ -25,15 +36,14 @@ const MainLayout = () => {
     setView('models');
   };
 
-  console.log("aici: " + token);
-  if (token == null) {
-    return <Navigate to="/login" />;
+  if (!storedToken) {
+    return <Navigate to="/app" />;
   }
 
   return (
     <Box display="flex" height="100vh" position="relative">
       <Sidebar onProjectClick={handleProjectClick} onWorkflowsClick={handleWorkflowsClick} onModelsClick={handleModelsClick} />
-      <Box flexGrow={1} p={3} position="relative"> {/* Add position relative */}
+      <Box flexGrow={1} p={3} position="relative">
         <UserMenu />
         {view === 'workflows' && <Workflows />}
         {view === 'models' && <Models />}

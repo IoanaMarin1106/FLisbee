@@ -38,7 +38,7 @@ const Sidebar = ({ onProjectClick, onWorkflowsClick, onModelsClick }) => {
       }}
     >
       <List>
-        <Card className={classes.card} onClick={onProjectClick}>
+        <Card className={classes.card} onClick={onProjectClick} elevation={4}>
           <CardContent>
             <Grid container alignItems="center" justifyContent="center">
               <Grid item>
@@ -51,7 +51,7 @@ const Sidebar = ({ onProjectClick, onWorkflowsClick, onModelsClick }) => {
           </CardContent>
         </Card>
         <Divider />
-        <Card className={classes.card} onClick={onProjectClick}>
+        <Card className={classes.card} onClick={onProjectClick} elevation={4}>
           <CardContent>
             <ListItem button>
               <ListItemIcon><HomeIcon /></ListItemIcon>
@@ -60,7 +60,7 @@ const Sidebar = ({ onProjectClick, onWorkflowsClick, onModelsClick }) => {
           </CardContent>
         </Card>
         <Divider />
-        <Card className={classes.card} onClick={onWorkflowsClick}>
+        <Card className={classes.card} onClick={onWorkflowsClick} elevation={4}>
           <CardContent>
             <ListItem button>
               <ListItemIcon><WorkIcon /></ListItemIcon>
@@ -68,7 +68,7 @@ const Sidebar = ({ onProjectClick, onWorkflowsClick, onModelsClick }) => {
             </ListItem>
           </CardContent>
         </Card>
-        <Card className={classes.card} onClick={onModelsClick}>
+        <Card className={classes.card} onClick={onModelsClick} elevation={4}>
           <CardContent>
             <ListItem button>
               <ListItemIcon><StorageIcon /></ListItemIcon>
@@ -79,7 +79,7 @@ const Sidebar = ({ onProjectClick, onWorkflowsClick, onModelsClick }) => {
       </List>
       <Box position="absolute" bottom={0} left={0} p={2} zIndex={1000}> {}
           <Typography variant="body2">
-            FLisbee 2023.6.0
+            FLisbee 2024.6.0
           </Typography>
         </Box>
     </Drawer>
