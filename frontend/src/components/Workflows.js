@@ -14,6 +14,7 @@ import ArrowBackIcon from '@material-ui/icons/ArrowBack';
 import LogsCard from './LogsCard';
 import { makeStyles } from '@material-ui/core/styles';
 import { getWorkflowState, cancelWorkflow, runWorkflow } from '../features/workflows/workflowsSlice';
+import CustomButton from './CustomButton';
 
 const useStyles = makeStyles((theme) => ({
   container: {
@@ -26,7 +27,7 @@ const useStyles = makeStyles((theme) => ({
   },
   appBar: {
     position: 'relative',
-    backgroundColor: theme.palette.primary.main,
+    backgroundColor: "cornflowerblue",
     height: theme.spacing(16),
     display: 'flex',
     justifyContent: 'center',
@@ -183,22 +184,23 @@ const Workflows = () => {
   };
 
   return (
-    <Grid container justifyContent="center" alignItems="center" className={classes.container}>
+    <Grid container justifyContent="center" style={{ marginTop: "30px"}}alignItems="center" className={classes.container}>
       <AppBar position="static" className={classes.appBar}>
         <Toolbar>
           <Typography variant="h6" className={classes.title}>
             {selectedWorkflow ? 'Workflow Details' : 'Workflows'}
           </Typography>
           {!selectedWorkflow && (
-            <Button
+            <CustomButton
               variant="contained"
               color="secondary"
               startIcon={<AddIcon />}
               onClick={handleAddWorkflow}
               className={classes.button}
+              style={{ backgroundColor: 'white', color: 'cornflowerblue' }}
             >
               Add New Workflow
-            </Button>
+            </CustomButton>
           )}
         </Toolbar>
       </AppBar>
@@ -217,9 +219,9 @@ const Workflows = () => {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleAddWorkflowSubmit} color="primary">
+          <CustomButton onClick={handleAddWorkflowSubmit} color="primary">
             Submit
-          </Button>
+          </CustomButton>
         </DialogActions>
       </Dialog>
       <Grid item xs={12} style={{ width: '100%' }}>
@@ -320,7 +322,7 @@ const Workflows = () => {
                       <IconButton color="primary" onClick={(e) => handleRunWorkflow(workflow.id, e)}>
                         <PlayArrowIcon />
                       </IconButton>
-                      <IconButton color="secondary" onClick={(e) => handleDeleteWorkflow(workflow.id, e)}>
+                      <IconButton onClick={(e) => handleDeleteWorkflow(workflow.id, e)}>
                         <DeleteIcon />
                       </IconButton>
                     </CardActions>

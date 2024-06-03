@@ -2,6 +2,23 @@ import React, { useState } from 'react';
 import { IconButton, Menu, MenuItem, Avatar } from '@material-ui/core';
 import { useDispatch } from 'react-redux';
 import { logout } from '../features/auth/authSlice';
+import { styled } from '@mui/material/styles';
+
+const CustomIconButton = styled(IconButton)(({ theme }) => ({
+  margin: theme.spacing(1),
+  backgroundColor: 'lightblue',
+  '&:hover': {
+    backgroundColor: 'deepskyblue',
+  },
+  '& .MuiAvatar-root': {
+    width: theme.spacing(5),
+    height: theme.spacing(5),
+  },
+}));
+
+const CustomAvatar = styled(Avatar)(({ theme }) => ({
+  border: `2px solid ${theme.palette.primary.main}`,
+}));
 
 const UserMenu = () => {
   const [anchorEl, setAnchorEl] = useState(null);
@@ -22,9 +39,9 @@ const UserMenu = () => {
 
   return (
     <div style={{ position: 'absolute', top: 0, right: 0 }}>
-      <IconButton onClick={handleMenuOpen}>
-        <Avatar alt={username} src="/static/images/avatar/1.jpg" />
-      </IconButton>
+      <CustomIconButton onClick={handleMenuOpen}>
+        <CustomAvatar alt={username} src="/static/images/avatar/1.jpg" />
+      </CustomIconButton>
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
