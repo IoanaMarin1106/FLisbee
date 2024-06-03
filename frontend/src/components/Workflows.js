@@ -1,9 +1,33 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { getWorkflowsCount, registerWorkflow, fetchAllWorkflows, deleteWorkflow } from '../features/workflows/workflowsSlice';
 import {
-  Typography, Button, Grid, IconButton, AppBar, Toolbar, Box, Card, CardContent, CardActions,
-  Chip, Dialog, DialogTitle, DialogContent, DialogActions, TextField
+  getWorkflowsCount,
+  createWorkflow,
+  fetchAllWorkflows,
+  deleteWorkflow, registerWorkflow,
+} from '../features/workflows/workflowsSlice';
+import {
+  Typography,
+  Button,
+  Grid,
+  IconButton,
+  AppBar,
+  Toolbar,
+  Box,
+  Card,
+  CardContent,
+  CardActions,
+  Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  InputLabel,
+  MenuItem,
+  Select,
+  FormControl,
+  InputAdornment
 } from '@material-ui/core';
 import AddIcon from '@material-ui/icons/Add';
 import EditIcon from '@material-ui/icons/Edit';
@@ -13,7 +37,8 @@ import DeleteIcon from '@material-ui/icons/Delete';
 import ArrowBackIcon from '@material-ui/icons/ArrowBack';
 import LogsCard from './LogsCard';
 import { makeStyles } from '@material-ui/core/styles';
-import { getWorkflowState, cancelWorkflow, runWorkflow } from '../features/workflows/workflowsSlice';
+import { getWorkflowStatus, cancelWorkflow, runWorkflow } from '../features/workflows/workflowsSlice';
+import {Add, Remove} from "@material-ui/icons";
 import CustomButton from './CustomButton';
 
 const useStyles = makeStyles((theme) => ({
@@ -108,15 +133,21 @@ const Workflows = () => {
 
   const [showAddWorkflowDialog, setShowAddWorkflowDialog] = useState(false);
   const [workflowNameInput, setWorkflowNameInput] = useState('');
+  const [trainingFrequency, setTrainingFrequency] = useState(1);
+  const [selectedModel, setSelectedModel] = useState('model1');
+
   const [selectedWorkflow, setSelectedWorkflow] = useState(null);
   const [showOverview, setShowOverview] = useState(false);
   const [showLogs, setShowLogs] = useState(false);
-  const [workflowState, setWorkflowState] = useState(null);
+  const [workflowStatus, setWorkflowStatus] = useState(null);
+
+  const username = localStorage.getItem('username');
+
 
   useEffect(() => {
     if (selectedWorkflow) {
-      dispatch(getWorkflowState(selectedWorkflow.id)).then((response) => {
-        setWorkflowState(response.payload);
+      dispatch(getWorkflowStatus(selectedWorkflow.id)).then((response) => {
+        setWorkflowStatus(response.payload.status);
       });
     }
   }, [selectedWorkflow, dispatch]);
@@ -125,6 +156,16 @@ const Workflows = () => {
     dispatch(getWorkflowsCount());
     dispatch(fetchAllWorkflows());
   }, [dispatch]);
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      allWorkflows.forEach((workflow) => {
+        dispatch(getWorkflowStatus(workflow.id))
+      });
+    }, 5000);
+
+    return () => clearInterval(intervalId);
+  }, [dispatch, allWorkflows]);
 
   const handleAddWorkflow = () => {
     setShowAddWorkflowDialog(true);
@@ -136,9 +177,32 @@ const Workflows = () => {
   };
 
   const handleAddWorkflowSubmit = () => {
-    dispatch(registerWorkflow({ name: workflowNameInput })).then(() => {
+    dispatch(
+      registerWorkflow(
+        {
+          name: workflowNameInput,
+          ml_model: selectedModel,
+          training_frequency: trainingFrequency,
+          user_email: username,
+        }
+      )
+    ).then((result) => {
+      const workflow_id = result.payload.workflow_id;
+      console.log('Registered Workflow:', workflow_id);
+
       dispatch(getWorkflowsCount());
       dispatch(fetchAllWorkflows());
+      dispatch(
+        createWorkflow(
+          {
+            name: workflowNameInput,
+            workflow_id: workflow_id,
+            ml_model: selectedModel,
+            training_frequency: trainingFrequency,
+            user_email: username,
+          }
+        )
+      );
     });
     setShowAddWorkflowDialog(false);
     setWorkflowNameInput('');
@@ -183,6 +247,14 @@ const Workflows = () => {
       console.log("run workflow");
   };
 
+  const handleIncrementFrequency = () => {
+    setTrainingFrequency(Math.min(trainingFrequency + 1, 24));
+  };
+
+  const handleDecrementFrequency = () => {
+    setTrainingFrequency(Math.max(trainingFrequency - 1, 1));
+  };
+
   return (
     <Grid container justifyContent="center" style={{ marginTop: "30px"}}alignItems="center" className={classes.container}>
       <AppBar position="static" className={classes.appBar}>
@@ -217,6 +289,52 @@ const Workflows = () => {
             value={workflowNameInput}
             onChange={(e) => setWorkflowNameInput(e.target.value)}
           />
+          <TextField
+              id="training-frequency"
+              label="Training Frequency (hours)"
+              type="number"
+              fullWidth
+              value={trainingFrequency}
+              onChange={(e) => {
+                let value = parseInt(e.target.value);
+                if (value < 1) {
+                  value = 1;
+                } else if (value > 24) {
+                  value = 24;
+                }
+                setTrainingFrequency(value);
+              }}
+              InputProps={{
+                endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton onClick={handleIncrementFrequency}>
+                        <Add />
+                      </IconButton>
+                      <IconButton onClick={handleDecrementFrequency}>
+                        <Remove />
+                      </IconButton>
+                    </InputAdornment>
+                ),
+                inputProps: {
+                  min: 1,
+                  max: 24,
+                },
+              }}
+          />
+          <FormControl fullWidth>
+            <InputLabel id="model-select-label">Select Model</InputLabel>
+            <Select
+                labelId="model-select-label"
+                id="model-select"
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value)}
+            >
+              <MenuItem value="model1">Model 1</MenuItem>
+              <MenuItem value="model2">Model 2</MenuItem>
+              <MenuItem value="model3">Model 3</MenuItem>
+              {/* Add more models as needed */}
+            </Select>
+          </FormControl>
         </DialogContent>
         <DialogActions>
           <CustomButton onClick={handleAddWorkflowSubmit} color="primary">
@@ -245,18 +363,18 @@ const Workflows = () => {
                   <div>
                     <Typography variant="body1">{`ID: ${selectedWorkflow.id}`}</Typography>
                     <Typography variant="body1">{`Name: ${selectedWorkflow.name}`}</Typography>
-                    <Typography variant="body1">{`Status: ${workflowState}`}</Typography>
+                    <Typography variant="body1">{`Status: ${workflowStatus}`}</Typography>
                   </div>
                   <div className={classes.buttonsContainer}>
                     <Button startIcon={<EditIcon />} color="primary" onClick={() => {}}>
                       Edit
                     </Button>
-                    {(workflowState === 'running' || workflowState === 'pending') && (
+                    {(workflowStatus === 'running' || workflowStatus === 'pending') && (
                       <Button startIcon={<CancelIcon />} onClick={() => handleCancelWorkflow(selectedWorkflow.id)} color="secondary">
                         Cancel
                       </Button>
                     )}
-                    {workflowState === 'created' && (
+                    {workflowStatus === 'created' && (
                       <Button startIcon={<PlayArrowIcon />} onClick={() => handleRunWorkflow(selectedWorkflow.id)} color="secondary">
                         Run
                       </Button>
@@ -282,7 +400,7 @@ const Workflows = () => {
                         <CardContent>
                           <Typography variant="body1">Name: {selectedWorkflow.name}</Typography>
                           <Typography variant="body1">ID: {selectedWorkflow.id}</Typography>
-                          <Typography variant="body1">Hostname: Example</Typography>
+                          <Typography variant="body1">Hostname: {selectedWorkflow.server_hostname}</Typography>
                         </CardContent>
                       </Card>
                     </Grid>
@@ -317,6 +435,7 @@ const Workflows = () => {
                     <div className={classes.workflowInfo}>
                       <Typography variant="body1">{workflow.id}</Typography>
                       <Typography variant="body1">{workflow.name}</Typography>
+                      <Typography variant="body1">{workflow.status}</Typography>
                     </div>
                     <CardActions className={classes.workflowActions}>
                       <IconButton color="primary" onClick={(e) => handleRunWorkflow(workflow.id, e)}>

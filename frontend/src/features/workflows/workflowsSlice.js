@@ -14,13 +14,25 @@ export const getWorkflowsCount = createAsyncThunk(
 );
 
 export const registerWorkflow = createAsyncThunk(
-  'workflows/insert',
-  async ({ name }) => {
+  'workflows/precreate',
+  async ({ name, ml_model, training_frequency, user_email }) => {
     try {
-      const response = await axios.post('http://localhost:5000/workflows/insert', { name });
+      const response = await axios.post('http://localhost:5000/workflows/precreate', { name, ml_model, training_frequency, user_email });
       return response.data;
     } catch (error) {
       throw Error('Failed to register workflow');
+    }
+  }
+);
+
+export const createWorkflow = createAsyncThunk(
+  'workflows/create',
+  async ({ name, workflow_id, ml_model, training_frequency, user_email }) => {
+    try {
+      const response = await axios.post('http://localhost:5000/workflows/create', { name, workflow_id, ml_model, training_frequency, user_email });
+      return response.data;
+    } catch (error) {
+      throw Error('Failed to create workflow');
     }
   }
 );
@@ -38,9 +50,9 @@ export const deleteWorkflow = createAsyncThunk('workflows/deleteWorkflow', async
   return id;
 });
 
-export const getWorkflowState = createAsyncThunk('workflows/getWorkflowState', async (id) => {
-  const response = await axios.get(`http://localhost:5000/workflows/state/${id}`);
-  return response.data.state;
+export const getWorkflowStatus = createAsyncThunk('workflows/getWorkflowStatus', async (id) => {
+  const response = await axios.get(`http://localhost:5000/workflows/status/${id}`);
+  return response.data;
 });
 
 export const cancelWorkflow = createAsyncThunk('workflow/cancelWorkflow', async (id) => {
@@ -84,6 +96,13 @@ const workflowsSlice = createSlice({
         state.items = state.items.filter((workflow) => workflow.id !== action.payload);
         state.count -= 1;
       })
+      .addCase(createWorkflow.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+      })
+      .addCase(createWorkflow.rejected, (state, action) => {
+        state.error = action.error.message;
+        state.status = 'failed';
+      })
       .addCase(registerWorkflow.fulfilled, (state, action) => {
         state.status = 'succeeded';
       })
@@ -91,9 +110,12 @@ const workflowsSlice = createSlice({
         state.error = action.error.message;
         state.status = 'failed';
       })
-      .addCase(getWorkflowState.fulfilled, (state, action) => {
+      .addCase(getWorkflowStatus.fulfilled, (state, action) => {
         state.status = 'succeeded';
-        state.state = action.payload.state;
+        const { id, status } = action.payload;
+        state.items = state.items.map(workflow =>
+          workflow.id === id ? { ...workflow, status } : workflow
+        );
       })
       .addCase(cancelWorkflow.fulfilled, (state, action) => {
         console.log(action.payload);
