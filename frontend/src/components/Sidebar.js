@@ -1,5 +1,5 @@
 import React from 'react';
-import { Drawer, List, ListItem, ListItemIcon, ListItemText, Divider, Typography, Grid } from '@mui/material';
+import { Drawer, List, ListItem, ListItemIcon, ListItemText, Divider, Typography, Grid, Card, CardContent } from '@mui/material';
 import { Home as HomeIcon, Work as WorkIcon, Storage as StorageIcon } from '@mui/icons-material';
 import { makeStyles } from '@material-ui/core/styles';
 
@@ -16,8 +16,13 @@ const useStyles = makeStyles((theme) => ({
     color: theme.palette.common.white,
   },
   toolbar: theme.mixins.toolbar,
-  flisbeeText: {
-    marginBottom: theme.spacing(1),
+  card: {
+    margin: theme.spacing(1),
+    cursor: 'pointer',
+  },
+  flisbeeLogo: {
+    width: '60px',
+    marginRight: '10px',
   },
 }));
 
@@ -32,27 +37,45 @@ const Sidebar = ({ onProjectClick, onWorkflowsClick, onModelsClick }) => {
         paper: classes.drawerPaper,
       }}
     >
-      <div className={classes.toolbar} />
       <List>
-        <Grid container alignItems="center" justifyContent="center" className={classes.flisbeeText}>
-          <Grid item>
-            <Typography variant="h6">FLisbee</Typography>
-          </Grid>
-        </Grid>
+        <Card className={classes.card} onClick={onProjectClick}>
+          <CardContent>
+            <Grid container alignItems="center" justifyContent="center">
+              <Grid item>
+                <img src={"/frisbee_2826998.png"} alt="Flisbee Logo" className={classes.flisbeeLogo} />
+              </Grid>
+              <Grid item>
+                <Typography variant="h4" align="center">FLisbee</Typography>
+              </Grid>
+            </Grid>
+          </CardContent>
+        </Card>
         <Divider />
-        <ListItem button onClick={onProjectClick}>
-          <ListItemIcon><HomeIcon /></ListItemIcon>
-          <ListItemText primary="Project Overview" />
-        </ListItem>
+        <Card className={classes.card} onClick={onProjectClick}>
+          <CardContent>
+            <ListItem button>
+              <ListItemIcon><HomeIcon /></ListItemIcon>
+              <ListItemText primary="Project Overview" />
+            </ListItem>
+          </CardContent>
+        </Card>
         <Divider />
-        <ListItem button onClick={onWorkflowsClick}>
-          <ListItemIcon><WorkIcon /></ListItemIcon>
-          <ListItemText primary="Workflows" />
-        </ListItem>
-        <ListItem button onClick={onModelsClick}>
-          <ListItemIcon><StorageIcon /></ListItemIcon>
-          <ListItemText primary="ML Models" />
-        </ListItem>
+        <Card className={classes.card} onClick={onWorkflowsClick}>
+          <CardContent>
+            <ListItem button>
+              <ListItemIcon><WorkIcon /></ListItemIcon>
+              <ListItemText primary="Workflows" />
+            </ListItem>
+          </CardContent>
+        </Card>
+        <Card className={classes.card} onClick={onModelsClick}>
+          <CardContent>
+            <ListItem button>
+              <ListItemIcon><StorageIcon /></ListItemIcon>
+              <ListItemText primary="ML Models" />
+            </ListItem>
+          </CardContent>
+        </Card>
       </List>
     </Drawer>
   );

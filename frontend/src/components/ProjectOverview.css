@@ -1,0 +1,29 @@
+.project-overview-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  
+  /* CSS animation for freesby */
+  .flying-freesby {
+    /* Add your animation styles here */
+  }
+  
+  /* Styles for the card */
+  .project-card {
+    margin-top: 20px; /* Adjust margin as needed */
+    width: 300px; /* Adjust width as needed */
+    animation: fadeIn 1s ease; /* Example animation */
+  }
+  
+  @keyframes fadeIn {
+    0% {
+      opacity: 0;
+    }
+    100% {
+      opacity: 1;
+    }
+  }
+  

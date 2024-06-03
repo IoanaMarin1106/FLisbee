@@ -297,7 +297,7 @@ const Workflows = () => {
                 )}
                 {showLogs && (
                   <div>
-                                        <LogsCard logs="HERE WILL BE LOGS" />
+                    <LogsCard logs="HERE WILL BE LOGS" />
                   </div>
                 )}
               </CardContent>
@@ -310,7 +310,7 @@ const Workflows = () => {
               </div>
             ) : (
               allWorkflows.map((workflow) => (
-                <Card key={workflow.id} className={classes.workflowItem} onClick={() => handleWorkflowClick(workflow)}>
+                <Card key={workflow.id} className={classes.workflowItem} onClick={() => handleWorkflowClick(workflow)} elevation={5}>
                   <CardContent className={classes.card}>
                     <div className={classes.workflowInfo}>
                       <Typography variant="body1">{workflow.id}</Typography>

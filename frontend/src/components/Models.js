@@ -74,7 +74,7 @@ const Models = () => {
         <Grid container spacing={3} style={{ padding: 16 }}>
           {models.map(model => (
             <Grid item key={model.id} xs={12} sm={6} md={4} lg={3}>
-              <Card style={{ position: 'relative', height: '150px' }}>
+              <Card style={{ position: 'relative', height: '150px' }} elevation={5}>
                 <CardContent onClick={() => handleCardClick(model)}>
                   <Typography variant="h6">{model.name}</Typography>
                 </CardContent>
