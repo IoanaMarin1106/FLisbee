@@ -3,6 +3,7 @@ import { IconButton, Menu, MenuItem, Avatar } from '@material-ui/core';
 import { useDispatch } from 'react-redux';
 import { logout } from '../features/auth/authSlice';
 import { styled } from '@mui/material/styles';
+import { useNavigate } from 'react-router-dom';
 
 const CustomIconButton = styled(IconButton)(({ theme }) => ({
   margin: theme.spacing(1),
@@ -24,6 +25,7 @@ const UserMenu = () => {
   const [anchorEl, setAnchorEl] = useState(null);
   const username = localStorage.getItem('username');
   const dispatch = useDispatch();
+  const navigate = useNavigate()
 
   const handleMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
@@ -35,6 +37,7 @@ const UserMenu = () => {
 
   const handleLogout = () => {
     dispatch(logout());
+    navigate('/login');
   };
 
   return (
