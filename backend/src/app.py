@@ -24,13 +24,12 @@ client = MongoClient(config["MONGO_URI"])
 db = client['flMongoDb']
 users = db['users']
 workflows = db["workflows"]
+models = db["models"]
 
 # email
 HOST = "smtp.gmail.com"
 PORT = 587
 FROM_EMAIL = "solveitinfo0@gmail.com"
-FROM_EMAIL_PASSW = "testSolveIt12345"
-TO_EMAIL = "marinvioana@gmail.com"
 
 # Start Debugging
 if client:
@@ -43,6 +42,8 @@ def ping():
     return "ok"
 # End Debugging
 
+
+# ----------------------- Users -------------------------------
 @app.route("/register", methods=["POST"])
 def register():
     email = request.json.get("email", None)
@@ -97,6 +98,10 @@ def confirm_user_email(email):
     
     return jsonify({"msg": "Email confirmed successfully."}), 200
 
+# ----------------------- Users -------------------------------
+
+# ----------------------- Workflows ---------------------------
+
 @app.route("/workflows/count", methods=["GET"])
 def get_workflows_count():
     count = workflows.count_documents({})
@@ -117,8 +122,6 @@ def get_all_workflows():
 @app.route("/workflows/insert", methods=["POST"])
 def insert_workflow():
     name = request.json.get("name", None)
-    id
-    print(name)
     if not name:
         return jsonify({"msg": "Missing workflow name"}), 400
     
@@ -161,6 +164,51 @@ def run_workflow(workflow_id):
     # Change its state to 'running'
     # For now, let's just return a simple message
     return jsonify({"message": f"Workflow {workflow_id} is canceled"}), 200
+
+# ----------------------- Workflows ---------------------------
+
+# ----------------------- Models ------------------------------
+
+@app.route("/models/count", methods=["GET"])
+def get_models_count():
+    count = workflows.count_documents({})
+    return jsonify({"count": count})
+
+@app.route("/models/getAll", methods=["GET"])
+def get_all_models():
+    all_models = list(models.find({}))
+    models_list = []
+    for model in all_models:
+        models_list.append({
+            "id": str(model["mid"]),
+            "name": model["name"]
+        })
+    return jsonify(models_list)
+
+# TODO: update the method after decide details about models
+@app.route("/models/insert", methods=["POST"])
+def insert_model():
+    name = request.json.get("name", None)
+    if not name:
+        return jsonify({"msg": "Missing model name"}), 400
+    
+    model = models.find_one({"name": name})
+    if model:
+        return jsonify({"msg": "Model already registered"}), 400
+
+    model_id = str(uuid.uuid4())
+    models.insert_one({"mid": model_id, "name": name})
+    return jsonify({"msg": "Model created", "id": model_id}), 201
+
+@app.route("/models/delete/<model_id>", methods=["DELETE"])
+def delete_model(model_id):
+    result = models.delete_one({"mid": model_id})
+    if result.deleted_count == 1:
+        return jsonify({"msg": "Model deleted"}), 200
+    else:
+        return jsonify({"msg": "Model not found"}), 404
+
+# ----------------------- Models ------------------------------
 
 def send_confirmation_email(user_email):
     token = s.dumps(user_email, salt='email-confirm')
