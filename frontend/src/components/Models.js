@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchModels, addModel, deleteModel, getModelsCount } from '../features/models/modelsSlice';
+import { fetchModels, deleteModel, getModelsCount } from '../features/models/modelsSlice';
 import {
   Box,
   Typography,
@@ -20,6 +20,8 @@ import {
 import { Add as AddIcon, Delete as DeleteIcon } from '@material-ui/icons';
 import './CardFlip.css'; 
 import CustomButton from './CustomButton';
+import axios from 'axios';
+import { addModel } from '../features/models/modelsSlice';
 
 const Models = () => {
   const dispatch = useDispatch();
@@ -30,8 +32,7 @@ const Models = () => {
   const [newModelName, setNewModelName] = useState('');
   const [selectedModel, setSelectedModel] = useState(null);
   const [flipped, setFlipped] = useState({});
-
-  const token = localStorage.getItem("token");
+  const [selectedFile, setSelectedFile] = useState(null);
 
   useEffect(() => {
     if (status === 'idle') {
@@ -39,13 +40,17 @@ const Models = () => {
     }
   }, [status, dispatch]);
 
-  const handleAddModel = () => {
-    dispatch(addModel({ name: newModelName })).then(() => {
-      dispatch(fetchModels());
+  const handleAddModel = async () => {
+      dispatch(addModel({ name: newModelName, file: selectedFile })).then(() => {
+        dispatch(getModelsCount());
+        dispatch(fetchModels());
+      });
+
       setOpen(false);
       setNewModelName('');
-    });
+      setSelectedFile(null);
   };
+  
 
   const handleDeleteModel = (id, e) => {
     e.stopPropagation();
@@ -67,8 +72,12 @@ const Models = () => {
     setSelectedModel(null);
   };
 
+  const handleFileUpload = (file) => {
+    setSelectedFile(file);
+  };
+
   return (
-    <div style={{ marginTop: '60px' }}>
+    <div style={{ marginTop: '60px', padding: '20px' }}>
       <AppBar position="static" style={{ height: "100px", backgroundColor: 'steelblue', color: 'white' }}>
         <Toolbar style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '100%' }}>
           <Typography variant="h6">
@@ -115,9 +124,9 @@ const Models = () => {
                         <DeleteIcon />
                     </IconButton>
                   </div>
-                  <div className="card-back">
-                    <Typography variant="h6">{model.name}</Typography>
-                    <Typography variant="body2">Model details here...</Typography>
+                  <div className="card-back" style={{ backgroundColor: 'lightblue', padding: '10px', borderRadius: '5px', textAlign: 'center' }}>
+                    <Typography variant="h6">Model name: {model.name}</Typography>
+                    <Typography variant="body2">File Name: {model.filename}</Typography> {/* Display file name */}
                   </div>
                 </div>
               </Card>
@@ -125,22 +134,29 @@ const Models = () => {
           ))}
         </Grid>
       )}
-
       <Dialog open={open} onClose={handleCloseDialog}>
         <DialogTitle>{selectedModel ? 'Model Details' : 'Add New Model'}</DialogTitle>
         <DialogContent>
           {selectedModel ? (
             <Typography variant="body1">{selectedModel.name}</Typography>
           ) : (
-            <TextField
-              autoFocus
-              margin="dense"
-              label="Model Name"
-              type="text"
-              fullWidth
-              value={newModelName}
-              onChange={(e) => setNewModelName(e.target.value)}
-            />
+            <div>
+              <TextField
+                autoFocus
+                margin="dense"
+                label="Model Name"
+                type="text"
+                fullWidth
+                value={newModelName}
+                onChange={(e) => setNewModelName(e.target.value)}
+              />
+              <input
+                type="file"
+                accept=".csv,.json,.xml"  // Specify the accepted file types
+                onChange={(e) => handleFileUpload(e.target.files[0])}  // Handle file upload
+                style={{ marginTop: '10px' }}  // Add some space between text field and file input
+              />
+            </div>
           )}
         </DialogContent>
         <DialogActions>
@@ -148,12 +164,13 @@ const Models = () => {
             Cancel
           </Button>
           {!selectedModel && (
-            <Button onClick={handleAddModel} color="primary">
+            <Button onClick={handleAddModel} color="primary" disabled={!newModelName || !selectedFile}>
               Submit
             </Button>
           )}
         </DialogActions>
       </Dialog>
+
     </div>
   );
 };

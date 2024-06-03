@@ -1,7 +1,6 @@
 import string
 from datetime import datetime
 import random
-
 from flask import Flask, request, jsonify
 from pymongo import MongoClient
 from flask_cors import CORS
@@ -19,6 +18,7 @@ from itsdangerous import URLSafeTimedSerializer, SignatureExpired
 import smtplib
 from email.mime.text import MIMEText
 from flask import url_for
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
@@ -27,6 +27,7 @@ log_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(me
 app.config["MONGO_URI"] = config["MONGO_URI"]
 app.config['JWT_SECRET_KEY'] = config["JWT_SECRET_KEY"]
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
+ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'json'}
 jwt = JWTManager(app)
 
 s = URLSafeTimedSerializer(app.config['SECRET_KEY'])
@@ -41,7 +42,7 @@ models = db["models"]
 # email
 HOST = "smtp.gmail.com"
 PORT = 587
-FROM_EMAIL = "solveitinfo0@gmail.com"
+FROM_EMAIL = "flisbeeinfo@gmail.com"
 
 # AWS clients
 region = config["AWS_REGION"]
@@ -797,7 +798,8 @@ def get_all_models():
     for model in all_models:
         models_list.append({
             "id": str(model["mid"]),
-            "name": model["name"]
+            "name": model["name"],
+            "filename": model["filename"]
         })
     return jsonify(models_list)
 
@@ -805,16 +807,21 @@ def get_all_models():
 @app.route("/models/insert", methods=["POST"])
 def insert_model():
     name = request.json.get("name", None)
+    filename = request.json.get("filename", None)
+
     if not name:
         return jsonify({"msg": "Missing model name"}), 400
+    if not filename:
+        return jsonify({"msg": "Missing filename"}), 400
 
     model = models.find_one({"name": name})
     if model:
         return jsonify({"msg": "Model already registered"}), 400
 
     model_id = str(uuid.uuid4())
-    models.insert_one({"mid": model_id, "name": name})
+    models.insert_one({"mid": model_id, "name": name, "filename": filename})
     return jsonify({"msg": "Model created", "id": model_id}), 201
+
 
 @app.route("/models/delete/<model_id>", methods=["DELETE"])
 def delete_model(model_id):
@@ -823,12 +830,42 @@ def delete_model(model_id):
         return jsonify({"msg": "Model deleted"}), 200
     else:
         return jsonify({"msg": "Model not found"}), 404
+    
+@app.route('/upload/model', methods=['POST'])
+def upload_file():
+    print("aiciiii")
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'})
+
+    print("si aiciii")
+    file = request.files['file']
+
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'})
+    
+    # Read the content of the file
+    file_content = file.read()
+
+    # Process the file content (e.g., print or save to disk)
+    print("Content of the uploaded file:")
+    print(file_content.decode('utf-8'))  # Decode bytes to string assuming UTF-8 encoding
+    
+    print(f'File {file.filename}')
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        return jsonify({'success': True, 'message': 'File uploaded successfully'})
+    else:
+        return jsonify({'error': 'Invalid file type'})
+    
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 
 # ----------------------- Models ------------------------------
 
 def send_confirmation_email(user_email):
     token = s.dumps(user_email, salt='email-confirm')
-    confirm_url = f'http://localhost:3007/confirm/{user_email}/{token}'
+    confirm_url = f'http://localhost:3006/confirm/{user_email}/{token}'
     print(confirm_url)
     html = f'''
         <h2>Welcome to Flisbee!</h2>
@@ -845,7 +882,7 @@ def send_confirmation_email(user_email):
 
     with smtplib.SMTP(HOST, PORT) as server:
         server.starttls()
-        server.login(FROM_EMAIL, "unmnmgdudjqhtcqf")
+        server.login(FROM_EMAIL, "odyr rtxp vtda jrnk")
         server.sendmail(msg['From'], [msg['To']], msg.as_string())
 
 if __name__ == "__main__":

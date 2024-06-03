@@ -6,8 +6,28 @@ export const fetchModels = createAsyncThunk('models/fetchModels', async () => {
   return response.data;
 });
 
-export const addModel = createAsyncThunk('models/addModel', async ({ name }) => {
-  const response = await axios.post('http://localhost:5000/models/insert', { name });
+export const addModel = createAsyncThunk('models/addModel', async ({ name, file }) => {
+  const filename = file.name;
+  const response = await axios.post('http://localhost:5000/models/insert', { name, filename });
+
+  console.log(filename);
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('name', filename);
+
+  try {
+    const uploadMsg = await axios.post('http://localhost:5000/upload/model', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+
+    console.log("Upload message: " + JSON.stringify(uploadMsg.data));
+    
+  } catch (error) {
+    console.error('Error adding model:', error);
+  }
+
   return response.data;
 });
 
@@ -62,7 +82,12 @@ const modelsSlice = createSlice({
             state.error = action.error.message;
         })
         .addCase(addModel.fulfilled, (state, action) => {
-            state.items.push(action.payload);
+          console.log(action.payload);
+          state.items.push({
+              name: action.payload.name,
+              fileName: action.payload.filename,
+              id: action.payload.id 
+          });
         })
         .addCase(deleteModel.fulfilled, (state, action) => {
             state.items = state.items.filter((model) => model._id !== action.payload);
