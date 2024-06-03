@@ -124,7 +124,7 @@ const Models = () => {
                         <DeleteIcon />
                     </IconButton>
                   </div>
-                  <div className="card-back" style={{ backgroundColor: 'lightblue', padding: '10px', borderRadius: '5px', textAlign: 'center' }}>
+                  <div className="card-back" style={{ padding: '10px', borderRadius: '5px', textAlign: 'center' }}>
                     <Typography variant="h6">Model name: {model.name}</Typography>
                     <Typography variant="body2">File Name: {model.filename}</Typography> {/* Display file name */}
                   </div>
