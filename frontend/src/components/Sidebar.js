@@ -1,5 +1,5 @@
 import React from 'react';
-import { Drawer, List, ListItem, ListItemIcon, ListItemText, Divider, Typography, Grid, Card, CardContent } from '@mui/material';
+import { Box, Drawer, List, ListItem, ListItemIcon, ListItemText, Divider, Typography, Grid, Card, CardContent } from '@mui/material';
 import { Home as HomeIcon, Work as WorkIcon, Storage as StorageIcon } from '@mui/icons-material';
 import { makeStyles } from '@material-ui/core/styles';
 
@@ -77,7 +77,13 @@ const Sidebar = ({ onProjectClick, onWorkflowsClick, onModelsClick }) => {
           </CardContent>
         </Card>
       </List>
+      <Box position="absolute" bottom={0} left={0} p={2} zIndex={1000}> {}
+          <Typography variant="body2">
+            FLisbee 2023.6.0
+          </Typography>
+        </Box>
     </Drawer>
+    
   );
 };
 

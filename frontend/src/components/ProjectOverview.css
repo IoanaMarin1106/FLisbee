@@ -6,16 +6,30 @@
     text-align: center;
   }
   
-  /* CSS animation for freesby */
-  .flying-freesby {
-    /* Add your animation styles here */
+  @keyframes fly {
+    0% {
+      transform: translateX(0) rotate(0deg);
+    }
+    100% {
+      transform: translateX(calc(100vw + 200px)) rotate(360deg);
+    }
   }
   
-  /* Styles for the card */
+  .flying-freesby {
+    position: absolute;
+    top: 50%;
+    left: -200px;
+    width: 100px;
+    height: 100px;
+    background-image: url('../../public/frisbee_2826998.png');
+    background-size: cover;
+    animation: fly 5s linear infinite;
+  }
+  
   .project-card {
-    margin-top: 20px; /* Adjust margin as needed */
-    width: 300px; /* Adjust width as needed */
-    animation: fadeIn 1s ease; /* Example animation */
+    margin-top: 20px;
+    width: 300px;
+    animation: fadeIn 1s ease;
   }
   
   @keyframes fadeIn {

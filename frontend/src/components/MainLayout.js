@@ -31,9 +31,9 @@ const MainLayout = () => {
   }
 
   return (
-    <Box display="flex" height="100vh">
+    <Box display="flex" height="100vh" position="relative">
       <Sidebar onProjectClick={handleProjectClick} onWorkflowsClick={handleWorkflowsClick} onModelsClick={handleModelsClick} />
-      <Box flexGrow={1} p={3}>
+      <Box flexGrow={1} p={3} position="relative"> {/* Add position relative */}
         <UserMenu />
         {view === 'workflows' && <Workflows />}
         {view === 'models' && <Models />}
