@@ -15,15 +15,16 @@ import {
   Grid,
   Card,
   CardContent,
-  IconButton, MenuItem, Snackbar,
+  IconButton, Snackbar,
 } from '@material-ui/core';
 import {Add as AddIcon, Delete as DeleteIcon, ErrorOutline} from '@material-ui/icons';
 import './CardFlip.css'; 
 import CustomButton from './CustomButton';
-import axios from 'axios';
 import { addModel } from '../features/models/modelsSlice';
 
 import UploadFileIcon from '@mui/icons-material/UploadFile';
+import FilePresentOutlinedIcon from '@mui/icons-material/FilePresentOutlined';
+import SsidChartOutlinedIcon from '@mui/icons-material/SsidChartOutlined';
 import {Grow} from "@mui/material";
 
 const Models = () => {
@@ -154,11 +155,19 @@ const Models = () => {
                         <DeleteIcon />
                     </IconButton>
                   </div>
-                  <div className="card-back" style={{ borderRadius: '5px', textAlign: 'center' }}>
-                    <Typography variant="h6">{model.name}</Typography>
-                    <Typography variant="body2">File Name: {model.filename}</Typography>
-                    <Typography variant="body2">{model.description}</Typography>
-                    <Typography variant="body2">{model.features} features, {model.labels} labels</Typography>
+                  <div className="card-back" style={{ borderRadius: '5px' }}>
+                    <CardContent style={{ textAlign: 'center' }}>
+                      <Typography variant="h6" style={{ marginBottom: '10px' }}>{model.name}</Typography>
+                      <Typography variant="body2" style={{ textAlign: 'left', marginBottom: '10px' }}>{model.description}</Typography>
+                      <div style={{ display: 'flex' }}>
+                        <FilePresentOutlinedIcon fontSize={"small"} style={{ marginRight: '5px' }}/>
+                        <Typography variant="body2" style={{ textAlign: 'left' }}>{model.filename}</Typography>
+                      </div>
+                      <div style={{ display: 'flex' }}>
+                        <SsidChartOutlinedIcon fontSize={"small"} style={{ marginRight: '5px' }}/>
+                        <Typography variant="body2" style={{ textAlign: 'left' }}>{model.features} features, {model.labels} labels</Typography>
+                      </div>
+                    </CardContent>
                     <IconButton
                       style={{ position: 'absolute', top: 0, right: 0 }}
                       onClick={(e) => handleDeleteModel(model.id, e)}>
