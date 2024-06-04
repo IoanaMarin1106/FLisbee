@@ -8,8 +8,8 @@ const useStyles = makeStyles((theme) => ({
       marginTop: theme.spacing(1),
     },
     card: {
-      elevation: 5,
-      height: "150px",
+      elevation: 3,
+      height: "170px",
       backgroundColor: "#f5f5f5"
     },
     cardContent: {
@@ -18,9 +18,16 @@ const useStyles = makeStyles((theme) => ({
       flexDirection: 'column',
     },
     chipContainer: {
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'flex-end',
+      position: 'absolute',
+      right: 0,
+    },
+    leftLabel: {
+      marginRight: theme.spacing(2),
+      minWidth: '80px', // Adjust as needed
+    },
+    rightLabel: {
+      marginRight: theme.spacing(2),
+      minWidth: '160px', // Adjust as needed
     },
     chip: {
       margin: theme.spacing(0.5),
@@ -32,6 +39,13 @@ const useStyles = makeStyles((theme) => ({
     hostnameContainer: {
       display: 'flex',
       alignItems: 'center',
+      position: 'relative',
+      marginBottom: theme.spacing(1),
+    },
+    chipContainer: {
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'flex-end',
     },
   }));
   
@@ -55,19 +69,29 @@ const WorkflowDetails = ({ selectedWorkflow }) => {
       <Grid item xs={6}>
         <Card className={classes.card}>
           <CardContent className={classes.cardContent}>
-            <Typography variant="body1">
-              <strong>Name:</strong> <Chip label={selectedWorkflow.name} className={classes.chip} />
-            </Typography>
-            <Typography variant="body1">
-              <strong>ID:</strong> <Chip label={selectedWorkflow.id} className={classes.chip} />
-            </Typography>
             <div className={classes.hostnameContainer}>
-              <Typography variant="body1" style={{ marginRight: '8px' }}>
+              <Typography variant="body1" className={classes.leftLabel}>
+                <strong>Name:</strong> 
+              </Typography>
+              <div className={classes.chipContainer}>
+                <Chip label={<Typography>{selectedWorkflow.name}</Typography>} className={classes.chip} />
+              </div>
+            </div>
+            <div className={classes.hostnameContainer}>
+              <Typography variant="body1" className={classes.leftLabel}>
+                <strong>ID:</strong> 
+              </Typography>
+              <div className={classes.chipContainer}>
+                <Chip label={<Typography>{selectedWorkflow.id}</Typography>} className={classes.chip} />
+              </div>
+            </div>
+            <div className={classes.hostnameContainer}>
+              <Typography variant="body1" className={classes.leftLabel}>
                 <strong>Hostname:</strong>
               </Typography>
-              <Typography variant="body1" style={{ marginRight: '8px' }}>
-                <Chip label={selectedWorkflow.server_hostname} className={classes.chip} />
-              </Typography>
+              <div className={classes.chipContainer}>
+                <Chip label={<Typography style={{ marginRight: '8px' }}>{selectedWorkflow.server_hostname}</Typography>} className={classes.chip} />
+              </div>
               <IconButton
                 className={classes.copyIcon}
                 onClick={() => copyToClipboard(selectedWorkflow.server_hostname)}
@@ -81,15 +105,26 @@ const WorkflowDetails = ({ selectedWorkflow }) => {
       <Grid item xs={6}>
         <Card className={classes.card}>
           <CardContent className={classes.cardContent}>
-            <Typography variant="body1">
-              <strong>Model:</strong> <Chip label={selectedWorkflow.ml_model} className={classes.chip} />
-            </Typography>
-            <Typography variant="body1">
-              <strong>Avg Method:</strong> <Chip label="Fed Avg" className={classes.chip} />
-            </Typography>
-            <Typography variant="body1">
-              <strong>Training Frequency:</strong> <Chip label={`${selectedWorkflow.training_frequency} hour(s)`} className={classes.chip} />
-            </Typography>
+            <div className={classes.hostnameContainer}>
+              <Typography variant="body1" className={classes.rightLabel}>
+                <strong>Model:</strong> 
+              </Typography>
+              <div className={classes.chipContainer}>
+                <Chip label={<Typography>{selectedWorkflow.ml_model}</Typography>} className={classes.chip} />
+              </div>
+            </div>
+            <div className={classes.hostnameContainer}>
+              <Typography variant="body1" className={classes.rightLabel}>
+                <strong>Avg Method:</strong> 
+              </Typography>
+              <Chip label={<Typography>FedAvg</Typography>} className={classes.chip} />
+            </div>
+            <div className={classes.hostnameContainer}>
+              <Typography variant="body1" className={classes.rightLabel}>
+                <strong>Training Frequency:</strong> 
+              </Typography>
+              <Chip label={<Typography>{selectedWorkflow.training_frequency} hour(s)</Typography>} className={classes.chip} />
+            </div>
           </CardContent>
         </Card>
       </Grid>

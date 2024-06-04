@@ -31,10 +31,10 @@ import {
   Select,
   FormControl,
   InputAdornment,
-  Snackbar, Fade
+  Snackbar, 
+  ThemeProvider
 } from '@material-ui/core';
 import AddIcon from '@material-ui/icons/Add';
-import EditIcon from '@material-ui/icons/Edit';
 import CancelIcon from '@material-ui/icons/Stop';
 import PlayArrowIcon from '@material-ui/icons/PlayArrow';
 import DeleteIcon from '@material-ui/icons/Delete';
@@ -42,12 +42,53 @@ import ArrowBackIcon from '@material-ui/icons/ArrowBack';
 import LogsCard from './LogsCard';
 import { makeStyles } from '@material-ui/core/styles';
 import { getWorkflowStatus, cancelWorkflow, runWorkflow } from '../features/workflows/workflowsSlice';
-import {Add, ErrorOutline, Remove, Work} from "@material-ui/icons";
+import {Add, ErrorOutline, Refresh, Remove} from "@material-ui/icons";
 import CustomButton from './CustomButton';
 import WorkflowDetails from './WorkflowDetails';
 import {Grow} from "@mui/material";
+import { Cancel, CheckCircle } from '@material-ui/icons';
+import { createMuiTheme } from '@material-ui/core/styles';
+import HourglassFullIcon from '@mui/icons-material/HourglassFull';
 
 const useStyles = makeStyles((theme) => ({
+  workflowDetails: {
+    display: 'flex',
+    alignItems: 'center',
+  },
+  label: {
+    fontWeight: 'bold',
+    marginRight: theme.spacing(1),
+  },
+  spacer: {
+    borderLeft: `1px solid ${theme.palette.text.secondary}`,
+    marginLeft: "15px",
+    height: '1.5em',
+    marginRight: theme.spacing(2),
+  },
+  spin: {
+    animation: '$spin 1s linear infinite',
+    padding: "5px"
+  },
+  rotate: {
+    animation: '$rotate 2s linear infinite',
+    padding: "5px"
+  },
+  '@keyframes spin': {
+    from: {
+      transform: 'rotate(0deg)',
+    },
+    to: {
+      transform: 'rotate(360deg)',
+    },
+  },
+  '@keyframes rotate': {
+    from : {
+      transform: 'rotate(0deg)',
+    },
+    to: {
+      transform: 'rotate(360deg)',
+    }
+  },
   container: {
     minHeight: '10vh',
     paddingTop: theme.spacing(4),
@@ -130,6 +171,31 @@ const useStyles = makeStyles((theme) => ({
     gap: theme.spacing(1),
   },
 }));
+
+const getStatusColor = (status) => {
+  switch (status) {
+    case 'Canceled':
+      return 'gray'; 
+    case 'Failed':
+      return 'red';
+    case 'Created':
+    case 'Running':
+      return 'green';
+    case 'Pending':
+    case 'Provisioning':
+      return 'orange';
+    default:
+      return 'gray';
+  }
+};
+
+const theme = createMuiTheme({
+  palette: {
+    primary: {
+      main: '#ff0000', // Change this to your desired color
+    },
+  },
+});
 
 const Workflows = () => {
   const classes = useStyles();
@@ -380,15 +446,29 @@ const Workflows = () => {
             <Card className={classes.detailsCard} elevation={5}>
               <CardContent>
                 <div className={classes.detailsHeader}>
-                  <div>
-                    <Typography variant="body1">{`ID: ${selectedWorkflow.id}`}</Typography>
-                    <Typography variant="body1">{`Name: ${selectedWorkflow.name}`}</Typography>
-                    <Typography variant="body1">{`Status: ${selectedWorkflow.status}`}</Typography>
-                  </div>
+                <div className={classes.workflowDetails}>
+                  <Typography variant="body1" className={classes.label}>ID:</Typography>
+                  <Typography variant="body1">{selectedWorkflow.id}</Typography>
+                  <div className={classes.spacer} />
+                  <Typography variant="body1" className={classes.label}>Name:</Typography>
+                  <Typography variant="body1">{selectedWorkflow.name}</Typography>
+                  <div className={classes.spacer} />
+                  <Typography variant="body1" className={classes.label}>Status:</Typography>
+                  <Chip
+                    label={<Typography>{selectedWorkflow.status}</Typography>}
+                    style={{ backgroundColor: getStatusColor(selectedWorkflow.status), color: '#fff' }}
+                    avatar={
+                      <>
+                        {selectedWorkflow.status === 'Running' && <Refresh className={classes.spin} />}
+                        {selectedWorkflow.status === 'Failed' && <ErrorOutline style={{ padding: "5px" }} />}
+                        {selectedWorkflow.status === 'Canceled' && <Cancel style={{ padding: "5px" }} />}
+                        {(selectedWorkflow.status === 'Pending' || selectedWorkflow.status === 'Provisioning') && <HourglassFullIcon className={classes.rotate} />}
+                        {selectedWorkflow.status === 'Created' && <CheckCircle style={{ padding: "5px" }} />}
+                      </>
+                    }
+                  />
+                </div>
                   <div className={classes.buttonsContainer}>
-                    <Button startIcon={<EditIcon />} color="primary" onClick={() => {}}>
-                      Edit
-                    </Button>
                     {(selectedWorkflow.status === 'Running' || selectedWorkflow.status === 'Provisioning' || selectedWorkflow.status === 'Pending') && (
                       <Button startIcon={<CancelIcon />} onClick={() => handleCancelWorkflow(selectedWorkflow.id)} color="secondary">
                         Cancel
@@ -434,11 +514,31 @@ const Workflows = () => {
                 <Card key={workflow.id} className={classes.workflowItem} onClick={() => handleWorkflowClick(workflow)} elevation={5}>
                   <CardContent className={classes.card}>
                     <div className={classes.workflowInfo}>
-                      <Typography variant="body1">{workflow.id}</Typography>
-                      <Typography variant="body1">{workflow.name}</Typography>
-                      <Typography variant="body1">{workflow.status}</Typography>
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <Typography style={{ padding: "20px"}} variant="body1">{workflow.id}</Typography>
+                        <div style={{ borderLeft: '1px solid #ccc', height: '50px', margin: '0px 10px' }}></div> {/* Vertical Separator */}
+                        <Typography style={{ padding: "20px"}} variant="body1">{workflow.created_at}</Typography>
+                        <div style={{ borderLeft: '1px solid #ccc', height: '50px', margin: '0 10px' }}></div> {/* Vertical Separator */}
+                        <Typography style={{ padding: "20px"}} variant="body1">{workflow.name}</Typography>
+                        <div style={{ margin: '0 20px' }}></div> {/* Add more space */}
+                      </div>
                     </div>
                     <CardActions className={classes.workflowActions}>
+                      <ThemeProvider theme={theme}>
+                        <Chip
+                          label={<Typography>{workflow.status}</Typography>}
+                          style={{ backgroundColor: getStatusColor(workflow.status), color: '#fff' }}
+                          avatar={
+                            <>
+                              {workflow.status === 'Running' && <Refresh className={classes.spin} />}
+                              {workflow.status === 'Failed' &&  <ErrorOutline style={{ padding: "5px" }}/> }
+                              {workflow.status === 'Canceled' && <Cancel style={{padding: "5px"}}/>}
+                              {(workflow.status === 'Pending' || workflow.status === 'Provisioning') && <HourglassFullIcon className={classes.rotate}/>}
+                              {workflow.status === 'Created' && <CheckCircle style={{ padding: "5px"}}/>}
+                            </>
+                          }
+                        />
+                      </ThemeProvider>
                       {(workflow.status === 'Running' || workflow.status === 'Provisioning' || workflow.status === 'Pending') && (
                         <IconButton color="primary" onClick={(e) => handleCancelWorkflow(workflow.id, e)}>
                           <CancelIcon />
@@ -455,6 +555,7 @@ const Workflows = () => {
                     </CardActions>
                   </CardContent>
                 </Card>
+
               ))
             )
           )}
