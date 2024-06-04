@@ -24,3 +24,10 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+backend/venv/bin/activate.csh
+/backend/venv
+/frontend/node_modules
+backend/src/config/__pycache__/__init__.cpython-311.pyc
+backend/src/config/__pycache__/__init__.cpython-311.pyc
+backend/.env
+backend/src/config/__pycache__/__init__.cpython-311.pyc
