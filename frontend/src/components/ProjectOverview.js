@@ -5,6 +5,7 @@ import './ProjectOverview.css';
 const ProjectOverviewPage = ({ username }) => {
   return (
     <div className="project-overview-container">
+      <div className="flying-frisbee-top"></div> {/* Top frisbee animation */}
       <Typography variant="h4" gutterBottom>Welcome, {username}</Typography>
       <Typography variant="body1" gutterBottom>Join the revolution in federated learning with FLisbee - Empowering Minds, Transforming Futures!</Typography>
       <Typography variant="caption">Chart Your Course to Success with Flisbee - Master Map-Making Essentials and Navigate Your Way to Brilliance!</Typography>
@@ -19,6 +20,8 @@ const ProjectOverviewPage = ({ username }) => {
           </Typography>
         </CardContent>
       </Card>
+
+      <div className="flying-frisbee-bottom"></div> {/* Bottom frisbee animation */}
     </div>
   );
 };

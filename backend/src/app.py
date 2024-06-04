@@ -491,7 +491,10 @@ def get_all_workflows():
             "id": str(workflow["wid"]),
             "name": workflow["name"],
             "status": workflow["status"],
+            "ml_model": workflow["ml_model"],
+            "training_frequency": workflow["training_frequency"],
             "server_hostname": workflow["server_hostname"],
+            "created_at": workflow["created_at"]
         })
     return jsonify(workflows_list)
 
@@ -1308,7 +1311,7 @@ def allowed_file(filename):
 
 def send_confirmation_email(user_email):
     token = s.dumps(user_email, salt='email-confirm')
-    confirm_url = f'http://localhost:3006/confirm/{user_email}/{token}'
+    confirm_url = f'http://localhost:3007/confirm/{user_email}/{token}'
     print(confirm_url)
     html = f'''
         <h2>Welcome to Flisbee!</h2>

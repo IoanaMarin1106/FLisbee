@@ -1,43 +1,65 @@
 .project-overview-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  height: 100vh;
+}
+
+@keyframes fly-right-to-left {
+  0% {
+    transform: translateX(calc(100vw + 200px)) rotate(0deg);
   }
-  
-  @keyframes fly {
-    0% {
-      transform: translateX(0) rotate(0deg);
-    }
-    100% {
-      transform: translateX(calc(100vw + 200px)) rotate(360deg);
-    }
+  100% {
+    transform: translateX(-2300px) rotate(360deg);
   }
-  
-  .flying-freesby {
-    position: absolute;
-    top: 50%;
-    left: -200px;
-    width: 100px;
-    height: 100px;
-    background-image: url('../../public/frisbee_2826998.png');
-    background-size: cover;
-    animation: fly 5s linear infinite;
+}
+
+@keyframes fly-left-to-right {
+  0% {
+    transform: translateX(0) rotate(0deg);
   }
-  
-  .project-card {
-    margin-top: 20px;
-    width: 300px;
-    animation: fadeIn 1s ease;
+  100% {
+    transform: translateX(calc(100vw + 200px)) rotate(360deg);
   }
-  
-  @keyframes fadeIn {
-    0% {
-      opacity: 0;
-    }
-    100% {
-      opacity: 1;
-    }
+}
+
+.flying-frisbee-top {
+  position: absolute;
+  top: 10%;
+  right: -100px;
+  width: 100px;
+  height: 100px;
+  background-image: url('../../public/frisbee_2826998.png');
+  background-size: cover;
+  animation: fly-right-to-left 5s linear infinite;
+}
+
+.flying-frisbee-bottom {
+  position: absolute;
+  top: 80%;
+  left: -200px; /* Start from outside the viewport */
+  width: 100px;
+  height: 100px;
+  background-image: url('../../public/frisbee_2826998.png');
+  background-size: cover;
+  animation: fly-left-to-right 5s linear infinite;
+}
+
+.project-card {
+  margin-top: 20px;
+  width: 300px;
+  animation: fadeIn 1s ease;
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
   }
-  
+  100% {
+    opacity: 1;
+  }
+}

@@ -42,8 +42,9 @@ import ArrowBackIcon from '@material-ui/icons/ArrowBack';
 import LogsCard from './LogsCard';
 import { makeStyles } from '@material-ui/core/styles';
 import { getWorkflowStatus, cancelWorkflow, runWorkflow } from '../features/workflows/workflowsSlice';
-import {Add, ErrorOutline, Remove} from "@material-ui/icons";
+import {Add, ErrorOutline, Remove, Work} from "@material-ui/icons";
 import CustomButton from './CustomButton';
+import WorkflowDetails from './WorkflowDetails';
 import {Grow} from "@mui/material";
 
 const useStyles = makeStyles((theme) => ({
@@ -394,9 +395,6 @@ const Workflows = () => {
                     <Typography variant="body1">{`Status: ${workflowStatus}`}</Typography>
                   </div>
                   <div className={classes.buttonsContainer}>
-                    <Button startIcon={<EditIcon />} color="primary" onClick={() => {}}>
-                      Edit
-                    </Button>
                     {(workflowStatus === 'Running' || workflowStatus === 'Provisioning' || workflowStatus === 'Pending') && (
                       <Button startIcon={<CancelIcon />} onClick={() => handleCancelWorkflow(selectedWorkflow.id)} color="secondary">
                         Cancel
@@ -422,26 +420,7 @@ const Workflows = () => {
                   color={showLogs ? "primary" : "default"}
                 />
                 {showOverview && (
-                  <Grid container spacing={2}>
-                    <Grid item xs={6}>
-                      <Card elevation={5}>
-                        <CardContent>
-                          <Typography variant="body1">Name: {selectedWorkflow.name}</Typography>
-                          <Typography variant="body1">ID: {selectedWorkflow.id}</Typography>
-                          <Typography variant="body1">Hostname: {selectedWorkflow.server_hostname}</Typography>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                    <Grid item xs={6}>
-                      <Card elevation={5}>
-                        <CardContent>
-                          <Typography variant="body1">Model: Example Model</Typography>
-                          <Typography variant="body1">Avg method: Method</Typography>
-                          <Typography variant="body1">Training frequency: Once a week</Typography>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                  </Grid>
+                  <WorkflowDetails selectedWorkflow={selectedWorkflow} />
                 )}
                 {showLogs && (
                   <div>

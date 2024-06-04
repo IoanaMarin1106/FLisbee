@@ -5,7 +5,6 @@ import Register from './components/Register';
 import MainLayout from './components/MainLayout';
 import Workflows from './components/Workflows';
 import EmailConfirmed from './components/EmailConfirmed';
-import WorkflowDetails from './components/WorkflowDetails';
 import Models from './components/Models';
 
 function App() {
@@ -19,7 +18,6 @@ function App() {
         <Route exact path='/app' element={ <MainLayout /> } />
         <Route exact path="/workflows" element={<Workflows/>} />
         <Route exact path="/models" element={<Models/>} />
-        <Route exact path="/workflows/:workflowId" element={<WorkflowDetails/>} />
       </Routes>
     </Router>
   );
