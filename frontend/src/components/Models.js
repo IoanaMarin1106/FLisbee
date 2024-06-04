@@ -15,7 +15,7 @@ import {
   Grid,
   Card,
   CardContent,
-  IconButton,
+  IconButton, MenuItem,
 } from '@material-ui/core';
 import { Add as AddIcon, Delete as DeleteIcon } from '@material-ui/icons';
 import './CardFlip.css'; 
@@ -23,16 +23,31 @@ import CustomButton from './CustomButton';
 import axios from 'axios';
 import { addModel } from '../features/models/modelsSlice';
 
+import UploadFileIcon from '@mui/icons-material/UploadFile';
+
 const Models = () => {
   const dispatch = useDispatch();
   const models = useSelector((state) => state.models.items);
   const status = useSelector((state) => state.models.status);
 
   const [open, setOpen] = useState(false);
-  const [newModelName, setNewModelName] = useState('');
-  const [selectedModel, setSelectedModel] = useState(null);
   const [flipped, setFlipped] = useState({});
+  const [newModelName, setNewModelName] = useState('');
+  const [modelDescription, setModelDescription] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
+
+  const username = localStorage.getItem('username');
+
+  const handleSubmit = () => {
+    handleAddModel({
+      name: newModelName,
+      description: modelDescription,
+      file: selectedFile,
+      userEmail: username,
+    });
+    handleCloseDialog();
+  };
+
 
   useEffect(() => {
     if (status === 'idle') {
@@ -41,20 +56,32 @@ const Models = () => {
   }, [status, dispatch]);
 
   const handleAddModel = async () => {
-      dispatch(addModel({ name: newModelName, file: selectedFile })).then(() => {
+      dispatch(addModel(
+        {
+          name: newModelName,
+          description: modelDescription,
+          file: selectedFile,
+          userEmail: username
+        }
+      )).then(() => {
         dispatch(getModelsCount());
         dispatch(fetchModels());
       });
 
-      setOpen(false);
-      setNewModelName('');
-      setSelectedFile(null);
+      handleCloseDialog()
   };
+
+  const handleCloseDialog = () => {
+    setOpen(false);
+    setNewModelName('');
+    setModelDescription('');
+    setSelectedFile(null);
+  }
   
 
   const handleDeleteModel = (id, e) => {
     e.stopPropagation();
-    dispatch(deleteModel(id)).then(() => {
+    dispatch(deleteModel(id, username)).then(() => {
       dispatch(getModelsCount());
       dispatch(fetchModels());
     });
@@ -67,14 +94,10 @@ const Models = () => {
     }));
   };
 
-  const handleCloseDialog = () => {
-    setOpen(false);
-    setSelectedModel(null);
-  };
-
   const handleFileUpload = (file) => {
     setSelectedFile(file);
   };
+
 
   return (
     <div style={{ marginTop: '60px', padding: '20px' }}>
@@ -124,9 +147,16 @@ const Models = () => {
                         <DeleteIcon />
                     </IconButton>
                   </div>
-                  <div className="card-back" style={{ padding: '10px', borderRadius: '5px', textAlign: 'center' }}>
-                    <Typography variant="h6">Model name: {model.name}</Typography>
-                    <Typography variant="body2">File Name: {model.filename}</Typography> {/* Display file name */}
+                  <div className="card-back" style={{ borderRadius: '5px', textAlign: 'center' }}>
+                    <Typography variant="h6">{model.name}</Typography>
+                    <Typography variant="body2">File Name: {model.filename}</Typography>
+                    <Typography variant="body2">{model.description}</Typography>
+                    <Typography variant="body2">{model.features} features, {model.labels} labels</Typography>
+                    <IconButton
+                      style={{ position: 'absolute', top: 0, right: 0 }}
+                      onClick={(e) => handleDeleteModel(model.id, e)}>
+                      <DeleteIcon />
+                    </IconButton>
                   </div>
                 </div>
               </Card>
@@ -135,39 +165,61 @@ const Models = () => {
         </Grid>
       )}
       <Dialog open={open} onClose={handleCloseDialog}>
-        <DialogTitle>{selectedModel ? 'Model Details' : 'Add New Model'}</DialogTitle>
+        <DialogTitle>Add New Model</DialogTitle>
         <DialogContent>
-          {selectedModel ? (
-            <Typography variant="body1">{selectedModel.name}</Typography>
-          ) : (
-            <div>
-              <TextField
-                autoFocus
-                margin="dense"
-                label="Model Name"
-                type="text"
-                fullWidth
-                value={newModelName}
-                onChange={(e) => setNewModelName(e.target.value)}
-              />
-              <input
-                type="file"
-                accept=".csv,.json,.xml"  // Specify the accepted file types
-                onChange={(e) => handleFileUpload(e.target.files[0])}  // Handle file upload
-                style={{ marginTop: '10px' }}  // Add some space between text field and file input
-              />
-            </div>
-          )}
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Model Name"
+            type="text"
+            fullWidth
+            value={newModelName}
+            onChange={(e) => setNewModelName(e.target.value)}
+          />
+          <TextField
+            margin="dense"
+            label="Model Description"
+            type="text"
+            fullWidth
+            multiline
+            minRows={4}
+            value={modelDescription}
+            onChange={(e) => setModelDescription(e.target.value)}
+            sx={{ mt: 2 }}
+          />
+          <Box
+            sx={{
+              border: '2px dashed grey',
+              borderRadius: 4,
+              p: 3,
+              mb: 3,
+              mt: 3,
+              textAlign: 'center',
+              backgroundColor: 'rgba(169, 169, 169, 0.1)', // Grey background with opacity
+              width: '80%', // 80% width of its container
+              margin: '0 auto', // Center horizontally
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)', // Box shadow for depth
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              handleFileUpload(e.dataTransfer.files[0]);
+            }}
+            onDragOver={(e) => e.preventDefault()}
+          >
+            {selectedFile ? selectedFile.name : 'Drag & Drop .keras file here'}
+          </Box>
+          <Button variant="outlined" component="label" startIcon={<UploadFileIcon />} >
+            Upload File
+            <input type="file" hidden onChange={(e) => handleFileUpload(e.target.files[0])} />
+          </Button>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog} color="primary">
             Cancel
           </Button>
-          {!selectedModel && (
-            <Button onClick={handleAddModel} color="primary" disabled={!newModelName || !selectedFile}>
-              Submit
-            </Button>
-          )}
+          <Button onClick={handleSubmit} color="primary" disabled={!newModelName || !selectedFile}>
+            Submit
+          </Button>
         </DialogActions>
       </Dialog>
 

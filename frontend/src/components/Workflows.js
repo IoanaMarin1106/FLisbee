@@ -7,6 +7,9 @@ import {
   deleteWorkflow, registerWorkflow, registerWorkflowRun, registerWorkflowCancel,
 } from '../features/workflows/workflowsSlice';
 import {
+  getUserModels,
+} from "../features/models/modelsSlice";
+import {
   Typography,
   Button,
   Grid,
@@ -27,7 +30,8 @@ import {
   MenuItem,
   Select,
   FormControl,
-  InputAdornment
+  InputAdornment,
+  Snackbar, Fade
 } from '@material-ui/core';
 import AddIcon from '@material-ui/icons/Add';
 import EditIcon from '@material-ui/icons/Edit';
@@ -38,8 +42,9 @@ import ArrowBackIcon from '@material-ui/icons/ArrowBack';
 import LogsCard from './LogsCard';
 import { makeStyles } from '@material-ui/core/styles';
 import { getWorkflowStatus, cancelWorkflow, runWorkflow } from '../features/workflows/workflowsSlice';
-import {Add, Remove} from "@material-ui/icons";
+import {Add, ErrorOutline, Remove} from "@material-ui/icons";
 import CustomButton from './CustomButton';
+import {Grow} from "@mui/material";
 
 const useStyles = makeStyles((theme) => ({
   container: {
@@ -130,19 +135,21 @@ const Workflows = () => {
   const dispatch = useDispatch();
   const workflowsCount = useSelector((state) => state.workflows.count);
   const allWorkflows = useSelector((state) => state.workflows.items) || [];
+  const userModels = useSelector((state) => state.models.userModels);
 
   const [showAddWorkflowDialog, setShowAddWorkflowDialog] = useState(false);
   const [workflowNameInput, setWorkflowNameInput] = useState('');
   const [trainingFrequency, setTrainingFrequency] = useState(1);
-  const [selectedModel, setSelectedModel] = useState('model1');
+  const [selectedModel, setSelectedModel] = useState(userModels[0] ? userModels[0].id : null);
 
   const [selectedWorkflow, setSelectedWorkflow] = useState(null);
   const [showOverview, setShowOverview] = useState(false);
   const [showLogs, setShowLogs] = useState(false);
   const [workflowStatus, setWorkflowStatus] = useState(null);
 
-  const username = localStorage.getItem('username');
+  const [showMissingModelsAlert, setShowMissingModelsAlert] = useState(false)
 
+  const username = localStorage.getItem('username');
 
   useEffect(() => {
     if (selectedWorkflow) {
@@ -153,6 +160,7 @@ const Workflows = () => {
   }, [selectedWorkflow, dispatch]);
 
   useEffect(() => {
+    dispatch(getUserModels(username));
     dispatch(getWorkflowsCount());
     dispatch(fetchAllWorkflows());
   }, [dispatch]);
@@ -168,7 +176,11 @@ const Workflows = () => {
   }, [dispatch, allWorkflows]);
 
   const handleAddWorkflow = () => {
-    setShowAddWorkflowDialog(true);
+    if (userModels.length === 0) {
+      setShowMissingModelsAlert(true);
+    } else {
+      setShowAddWorkflowDialog(true);
+    }
   };
 
   const handleCloseDialog = () => {
@@ -276,6 +288,19 @@ const Workflows = () => {
               Add New Workflow
             </CustomButton>
           )}
+          <Snackbar
+            anchorOrigin={{ vertical: 'center', horizontal: 'center' }}
+            open={showMissingModelsAlert}
+            TransitionComponent={Grow}
+            autoHideDuration={5000}
+            onClose={() => setShowMissingModelsAlert(false)}
+            message={
+            <Box style={{ display: "flex", justifyContent: "space-between"}}>
+              <ErrorOutline style={{ paddingRight: 5 }}/>
+              <Typography>No ML model found. You need to add a model before creating a workflow.</Typography>
+            </Box>
+            }
+          />
         </Toolbar>
       </AppBar>
       <Dialog open={showAddWorkflowDialog} onClose={handleCloseDialog} aria-labelledby="form-dialog-title">
@@ -331,10 +356,11 @@ const Workflows = () => {
                 value={selectedModel}
                 onChange={(e) => setSelectedModel(e.target.value)}
             >
-              <MenuItem value="model1">Model 1</MenuItem>
-              <MenuItem value="model2">Model 2</MenuItem>
-              <MenuItem value="model3">Model 3</MenuItem>
-              {/* Add more models as needed */}
+              {
+                userModels.map((model) => (
+                  <MenuItem key={model.id} value={model.id}>{model.name}</MenuItem>
+                ))
+              }
             </Select>
           </FormControl>
         </DialogContent>
