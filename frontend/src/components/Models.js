@@ -15,15 +15,16 @@ import {
   Grid,
   Card,
   CardContent,
-  IconButton, MenuItem,
+  IconButton, MenuItem, Snackbar,
 } from '@material-ui/core';
-import { Add as AddIcon, Delete as DeleteIcon } from '@material-ui/icons';
+import {Add as AddIcon, Delete as DeleteIcon, ErrorOutline} from '@material-ui/icons';
 import './CardFlip.css'; 
 import CustomButton from './CustomButton';
 import axios from 'axios';
 import { addModel } from '../features/models/modelsSlice';
 
 import UploadFileIcon from '@mui/icons-material/UploadFile';
+import {Grow} from "@mui/material";
 
 const Models = () => {
   const dispatch = useDispatch();
@@ -35,6 +36,7 @@ const Models = () => {
   const [newModelName, setNewModelName] = useState('');
   const [modelDescription, setModelDescription] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
+  const [showWrongFileAlert, setShowWrongFileAlert] = useState(false);
 
   const username = localStorage.getItem('username');
 
@@ -95,7 +97,12 @@ const Models = () => {
   };
 
   const handleFileUpload = (file) => {
-    setSelectedFile(file);
+    if (file && file.name.endsWith('.keras')) {
+      setSelectedFile(file);
+      console.log(file);
+    } else {
+     setShowWrongFileAlert(true)
+    }
   };
 
 
@@ -165,10 +172,22 @@ const Models = () => {
         </Grid>
       )}
       <Dialog open={open} onClose={handleCloseDialog}>
+        <Snackbar
+          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+          open={showWrongFileAlert}
+          TransitionComponent={Grow}
+          autoHideDuration={5000}
+          onClose={() => setShowWrongFileAlert(false)}
+          message={
+            <Box style={{ display: "flex", justifyContent: "space-between"}}>
+              <ErrorOutline style={{ paddingRight: 5 }}/>
+              <Typography>File has an unsupported extension. Please select a file with .keras extension.</Typography>
+            </Box>
+          }
+        />
         <DialogTitle>Add New Model</DialogTitle>
         <DialogContent>
           <TextField
-            autoFocus
             margin="dense"
             label="Model Name"
             type="text"
@@ -189,16 +208,21 @@ const Models = () => {
           />
           <Box
             sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               border: '2px dashed grey',
               borderRadius: 4,
               p: 3,
               mb: 3,
               mt: 3,
               textAlign: 'center',
-              backgroundColor: 'rgba(169, 169, 169, 0.1)', // Grey background with opacity
+              backgroundColor: 'rgba(169, 169, 169, 0.2)', // Grey background with opacity
+              height: '100px', // 100px height
               width: '80%', // 80% width of its container
               margin: '0 auto', // Center horizontally
               boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)', // Box shadow for depth
+              userSelect: 'none', // Prevent text selection
             }}
             onDrop={(e) => {
               e.preventDefault();
@@ -206,11 +230,11 @@ const Models = () => {
             }}
             onDragOver={(e) => e.preventDefault()}
           >
-            {selectedFile ? selectedFile.name : 'Drag & Drop .keras file here'}
+            <Typography variant="body1" style={{ color: 'rgba(0, 0, 0, 0.5'}}>{selectedFile ? selectedFile.name : 'Drag & Drop .keras file here'}</Typography>
           </Box>
           <Button variant="outlined" component="label" startIcon={<UploadFileIcon />} >
             Upload File
-            <input type="file" hidden onChange={(e) => handleFileUpload(e.target.files[0])} />
+            <input type="file" accept=".keras" hidden onChange={(e) => handleFileUpload(e.target.files[0])} />
           </Button>
         </DialogContent>
         <DialogActions>
