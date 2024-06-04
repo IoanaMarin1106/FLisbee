@@ -145,19 +145,10 @@ const Workflows = () => {
   const [selectedWorkflow, setSelectedWorkflow] = useState(null);
   const [showOverview, setShowOverview] = useState(false);
   const [showLogs, setShowLogs] = useState(false);
-  const [workflowStatus, setWorkflowStatus] = useState(null);
 
   const [showMissingModelsAlert, setShowMissingModelsAlert] = useState(false)
 
   const username = localStorage.getItem('username');
-
-  useEffect(() => {
-    if (selectedWorkflow) {
-      dispatch(getWorkflowStatus(selectedWorkflow.id)).then((response) => {
-        setWorkflowStatus(response.payload.status);
-      });
-    }
-  }, [selectedWorkflow, dispatch]);
 
   useEffect(() => {
     dispatch(getUserModels(username));
@@ -391,18 +382,18 @@ const Workflows = () => {
                   <div>
                     <Typography variant="body1">{`ID: ${selectedWorkflow.id}`}</Typography>
                     <Typography variant="body1">{`Name: ${selectedWorkflow.name}`}</Typography>
-                    <Typography variant="body1">{`Status: ${workflowStatus}`}</Typography>
+                    <Typography variant="body1">{`Status: ${selectedWorkflow.status}`}</Typography>
                   </div>
                   <div className={classes.buttonsContainer}>
                     <Button startIcon={<EditIcon />} color="primary" onClick={() => {}}>
                       Edit
                     </Button>
-                    {(workflowStatus === 'Running' || workflowStatus === 'Provisioning' || workflowStatus === 'Pending') && (
+                    {(selectedWorkflow.status === 'Running' || selectedWorkflow.status === 'Provisioning' || selectedWorkflow.status === 'Pending') && (
                       <Button startIcon={<CancelIcon />} onClick={() => handleCancelWorkflow(selectedWorkflow.id)} color="secondary">
                         Cancel
                       </Button>
                     )}
-                    {(workflowStatus === 'Created' || workflowStatus === 'Canceled' || workflowStatus === 'Failed') && (
+                    {(selectedWorkflow.status === 'Created' || selectedWorkflow.status === 'Canceled' || selectedWorkflow.status === 'Failed') && (
                       <Button startIcon={<PlayArrowIcon />} onClick={() => handleRunWorkflow(selectedWorkflow.id)} color="secondary">
                         Run
                       </Button>
@@ -466,12 +457,12 @@ const Workflows = () => {
                       <Typography variant="body1">{workflow.status}</Typography>
                     </div>
                     <CardActions className={classes.workflowActions}>
-                      {(workflowStatus === 'Running' || workflowStatus === 'Provisioning' || workflowStatus === 'Pending') && (
+                      {(workflow.status === 'Running' || workflow.status === 'Provisioning' || workflow.status === 'Pending') && (
                         <IconButton color="primary" onClick={(e) => handleCancelWorkflow(workflow.id, e)}>
                           <CancelIcon />
                         </IconButton>
                       )}
-                      {(workflowStatus === 'Created' || workflowStatus === 'Canceled' || workflowStatus === 'Failed') && (
+                      {(workflow.status === 'Created' || workflow.status === 'Canceled' || workflow.status === 'Failed') && (
                         <IconButton color="primary" onClick={(e) => handleRunWorkflow(workflow.id, e)}>
                           <PlayArrowIcon />
                         </IconButton>
