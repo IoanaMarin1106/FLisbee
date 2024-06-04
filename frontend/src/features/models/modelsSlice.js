@@ -6,17 +6,19 @@ export const fetchModels = createAsyncThunk('models/fetchModels', async () => {
   return response.data;
 });
 
-export const addModel = createAsyncThunk('models/addModel', async ({ name, file }) => {
+export const addModel = createAsyncThunk('models/addModel', async ({ name, description, file, userEmail }) => {
   const filename = file.name;
-  const response = await axios.post('http://localhost:5000/models/insert', { name, filename });
+  const response = await axios.post('http://localhost:5000/models/insert', { name, description, filename, user_email: userEmail });
 
   console.log(filename);
   const formData = new FormData();
   formData.append('file', file);
   formData.append('name', filename);
+  formData.append('user_email', userEmail);
+  formData.append('model_id', response.data.id);
 
   try {
-    const uploadMsg = await axios.post('http://localhost:5000/upload/model', formData, {
+    const uploadMsg = await axios.post('http://localhost:5000/upload/model', formData , {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
@@ -32,9 +34,13 @@ export const addModel = createAsyncThunk('models/addModel', async ({ name, file 
 });
 
 export const deleteModel = createAsyncThunk('models/deleteModel', async (id) => {
-console.log("model id " + id);
   await axios.delete(`http://localhost:5000/models/delete/${id}`);
   return id;
+});
+
+export const getUserModels = createAsyncThunk('models/getUserModels', async (userEmail) => {
+  const response = await axios.get(`http://localhost:5000/models/getUserModels/${userEmail}`);
+  return response.data;
 });
 
 export const getModelsCount = createAsyncThunk(
@@ -53,6 +59,7 @@ const modelsSlice = createSlice({
   name: 'models',
   initialState: {
     items: [],
+    userModels: [],
     status: 'idle',
     error: null,
   },
@@ -69,6 +76,10 @@ const modelsSlice = createSlice({
         .addCase(getModelsCount.rejected, (state, action) => {
             state.status = 'failed';
             state.error = action.error.message;
+        })
+        .addCase(getUserModels.fulfilled, (state, action) => {
+          state.status = 'succeeded';
+          state.userModels = action.payload;
         })
         .addCase(fetchModels.pending, (state) => {
             state.status = 'loading';

@@ -1,4 +1,5 @@
 import string
+import traceback
 from datetime import datetime
 import random
 from flask import Flask, request, jsonify
@@ -14,11 +15,14 @@ import boto3
 import base64
 import time
 import os
+import tempfile
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired
 import smtplib
 from email.mime.text import MIMEText
 from flask import url_for
 from werkzeug.utils import secure_filename
+import tensorflow as tf
+import shutil
 
 app = Flask(__name__)
 
@@ -27,7 +31,7 @@ log_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(me
 app.config["MONGO_URI"] = config["MONGO_URI"]
 app.config['JWT_SECRET_KEY'] = config["JWT_SECRET_KEY"]
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
-ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'json'}
+ALLOWED_EXTENSIONS = {'keras'}
 jwt = JWTManager(app)
 
 s = URLSafeTimedSerializer(app.config['SECRET_KEY'])
@@ -101,8 +105,12 @@ else:
 
 @app.route("/ping", methods=["GET"])
 def ping():
-    user_id = users.find_one({"email": "ciurezue@gmail.com"})["_id"]
-    return str(user_id)
+    # workflows.update_one(
+    #     {"wid": "kpJ511QEmWtK"},
+    #     {"$set": {"status": "Created"}}
+    # )
+    workflow = workflows.find_one({"wid": "kpJ511QEmWtK"})
+    return json.dumps(workflow, default=str)
 
 
 # End Debugging
@@ -145,12 +153,10 @@ def get_server_service_status(workflow_id):
         cluster=f'fl-ecs-{workflow_id}',
         serviceName=f'fl-server-service-{workflow_id}'
     )['taskArns']
-    print("server task_arns: ", task_arns)
     status = ecs_client.describe_tasks(
         cluster=f'fl-ecs-{workflow_id}',
         tasks=task_arns
     )['tasks'][0]['lastStatus']
-    print("server laststatus: ", status)
     return status
 
 
@@ -159,12 +165,10 @@ def get_orchestrator_service_status(workflow_id):
         cluster=f'fl-ecs-{workflow_id}',
         serviceName=f'fl-orchestrator-service-{workflow_id}'
     )['taskArns']
-    print("orchestrator task_arns: ", task_arns)
     status = ecs_client.describe_tasks(
         cluster=f'fl-ecs-{workflow_id}',
         tasks=task_arns
     )['tasks'][0]['lastStatus']
-    print("orchestrator laststatus: ", status)
     return status
 
 
@@ -178,6 +182,229 @@ def generate_random_string(length=12):
     characters = string.ascii_letters + string.digits
     random_string = ''.join(random.choice(characters) for _ in range(length))
     return random_string
+
+
+def empty_bucket(bucket_name):
+    response = s3_client.list_objects_v2(Bucket=bucket_name)
+
+    while 'Contents' in response:
+        for obj in response['Contents']:
+            s3_client.delete_object(Bucket=bucket_name, Key=obj['Key'])
+
+        if response['IsTruncated']:
+            response = s3_client.list_objects_v2(
+                Bucket=bucket_name,
+                ContinuationToken=response['NextContinuationToken']
+            )
+        else:
+            break
+
+
+def terminate_instances(workflow_id):
+    instances = asg_client.describe_auto_scaling_groups(
+        AutoScalingGroupNames=[f'Infra-ECS-Cluster-fl-ecs-{workflow_id}-ASG'],
+    )['AutoScalingGroups'][0]['Instances']
+    instanceIds = [instance['InstanceId'] for instance in instances]
+    ec2_client.terminate_instances(
+        InstanceIds=instanceIds
+    )
+
+
+def delete_auto_scaling_group(workflow_id):
+    asg_client.delete_auto_scaling_group(
+        AutoScalingGroupName=f'Infra-ECS-Cluster-fl-ecs-{workflow_id}-ASG',
+        ForceDelete=True
+    )
+
+
+def delete_load_balancer(workflow_id):
+    load_balancer_arn = elbv2_client.describe_load_balancers(
+        Names=[f'ecs-alb-{workflow_id}']
+    )['LoadBalancers'][0]['LoadBalancerArn']
+
+    elbv2_client.delete_load_balancer(
+        LoadBalancerArn=load_balancer_arn
+    )
+
+
+def delete_target_group(workflow_id):
+    target_group_arn = elbv2_client.describe_target_groups(
+        Names=[f'ecs-alb-targetgroup-{workflow_id}']
+    )['TargetGroups'][0]['TargetGroupArn']
+
+    elbv2_client.delete_target_group(
+        TargetGroupArn=target_group_arn
+    )
+
+
+def delete_launch_template(workflow_id):
+    ec2_client.delete_launch_template(
+        DryRun=False,
+        LaunchTemplateName=f'ECSLaunchTemplate_fl-ecs-{workflow_id}',
+    )
+
+
+def delete_server_service(workflow_id):
+    ecs_client.delete_service(
+        cluster=f'fl-ecs-{workflow_id}',
+        service=f'fl-server-service-{workflow_id}',
+        force=True
+    )
+
+
+def delete_orchestrator_service(workflow_id):
+    ecs_client.delete_service(
+        cluster=f'fl-ecs-{workflow_id}',
+        service=f'fl-orchestrator-service-{workflow_id}',
+        force=True
+    )
+
+
+def delete_ecs_cluster(workflow_id):
+    ecs_client.delete_cluster(
+        cluster=f'fl-ecs-{workflow_id}',
+    )
+
+
+def deregister_server_task_definition(workflow_id):
+    ecs_client.deregister_task_definition(
+        taskDefinition=f'fl-server-{workflow_id}:1'
+    )
+
+
+def deregister_orchestrator_task_definition(workflow_id):
+    ecs_client.deregister_task_definition(
+        taskDefinition=f'fl-orchestrator-{workflow_id}:1'
+    )
+
+
+def delete_task_definition(workflow_id):
+    ecs_client.delete_task_definitions(
+        taskDefinitions=[
+            f'fl-server-{workflow_id}:1',
+            f'fl-orchestrator-{workflow_id}:1'
+        ]
+    )
+
+
+def delete_bucket(workflow_id):
+    bucket_name = f'fl-workflow-{workflow_id.lower()}'
+    empty_bucket(bucket_name)
+    s3_client.delete_bucket(Bucket=bucket_name)
+
+
+def get_orchestrator_logs(workflow_id):
+    log_streams = logs_client.describe_log_streams(
+        logGroupName=f'/ecs/fl-orchestrator-{workflow_id}',
+        orderBy='LastEventTime',
+        descending=False,
+    )['logStreams']
+    log_stream_names = [log_stream['logStreamName'] for log_stream in log_streams]
+
+    logs = []
+    for log_stream_name in log_stream_names:
+        log_events = logs_client.get_log_events(
+            logGroupName=f'/ecs/fl-orchestrator-{workflow_id}',
+            logStreamName=log_stream_name,
+            startFromHead=True
+        )
+        for event in log_events['events']:
+            logs.append(f"[{timestamp_to_iso8601(event['timestamp'])}] {event['message']}")
+
+    return logs
+
+
+def create_tflite_model(keras_model, filename):
+    input_shape = keras_model.input_shape
+    num_inputs = input_shape[1] if isinstance(input_shape, tuple) else input_shape[-1]
+    output_shape = keras_model.output_shape
+    num_outputs = output_shape[1] if isinstance(output_shape, tuple) else output_shape[-1]
+
+    class Model(tf.Module):
+        def __init__(self):
+            self.model = keras_model
+
+        @tf.function(input_signature=[
+            tf.TensorSpec(shape=[None, num_inputs], dtype=tf.float32),
+            tf.TensorSpec(shape=[None, num_outputs], dtype=tf.int32)
+        ])
+        def train(self, features, label):
+            with tf.GradientTape() as tape:
+                predictions = self.model(tf.convert_to_tensor(features))
+                loss = self.model.loss(label, predictions)
+            gradients = tape.gradient(loss, self.model.trainable_variables)
+            self.model.optimizer.apply_gradients(zip(gradients, self.model.trainable_variables))
+            result = {"loss": loss}
+            return result
+
+        @tf.function(input_signature=[
+            tf.TensorSpec(shape=[None, num_inputs], dtype=tf.float32)
+        ])
+        def infer(self, features):
+            logits = self.model(features)
+            probabilities = tf.nn.softmax(logits, axis=-1)
+            return {
+                "output": probabilities
+            }
+
+        @tf.function(input_signature=[
+            tf.TensorSpec(shape=[], dtype=tf.string)
+        ])
+        def save(self, checkpoint_path):
+            tensor_names = [weight.name for weight in self.model.weights]
+            print("tensor_names: ", tensor_names)
+            tensors_to_save = [weight.read_value() for weight in self.model.weights]
+            tf.raw_ops.Save(
+                filename=checkpoint_path,
+                tensor_names=tensor_names,
+                data=tensors_to_save,
+                name='save')
+            return {
+                "checkpoint_path": checkpoint_path
+            }
+
+        @tf.function(input_signature=[tf.TensorSpec(shape=[], dtype=tf.string)])
+        def restore(self, checkpoint_path):
+            restored_tensors = list()
+            for var in self.model.weights:
+                restored = tf.raw_ops.Restore(
+                    file_pattern=checkpoint_path,
+                    tensor_name=var.name,
+                    dt=var.dtype,
+                    name='restore')
+                var.assign(restored)
+                if restored is not None:
+                    restored_tensors.append(var.name)
+            return {
+                "restored_tensors": ",".join(restored_tensors)
+            }
+
+    tf_model = Model()
+    saved_model_path = tempfile.gettempdir() + '/saved_model'
+    tf.saved_model.save(
+        tf_model, saved_model_path,
+        signatures={
+            'train': tf_model.train.get_concrete_function(),
+            'infer': tf_model.infer.get_concrete_function(),
+            'save': tf_model.save.get_concrete_function(),
+            'restore': tf_model.restore.get_concrete_function()
+        }
+    )
+
+    converter = tf.lite.TFLiteConverter.from_saved_model(saved_model_path)
+    converter.target_spec.supported_ops = [
+        tf.lite.OpsSet.TFLITE_BUILTINS,  # enable TensorFlow Lite ops.
+        tf.lite.OpsSet.SELECT_TF_OPS  # enable TensorFlow ops.
+    ]
+    tflite_model = converter.convert()
+
+    tflite_filepath = tempfile.gettempdir() + f'/{filename}.tflite'
+    open(tflite_filepath, 'wb').write(tflite_model)
+
+    if os.path.exists(saved_model_path):
+        shutil.rmtree(saved_model_path)
+
+    return tflite_filepath, num_inputs, num_outputs
 
 
 # API routes
@@ -201,7 +428,8 @@ def register():
 
     hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
     email_confirmed = False
-    user_id = users.insert_one({"email": email, "password": hashed_password, "email_confirmed": email_confirmed}).inserted_id
+    user_id = users.insert_one(
+        {"email": email, "password": hashed_password, "email_confirmed": email_confirmed}).inserted_id
     send_confirmation_email(email)
     return jsonify({"msg": "User created. Please check your email to confirm your address.", "id": str(user_id)}), 201
 
@@ -219,6 +447,7 @@ def login():
 
     access_token = create_access_token(identity=str(user["_id"]))
     return jsonify(access_token=access_token, username=email), 200
+
 
 @app.route('/confirmed/<email>', methods=["GET"])
 def get_user_confirmation_status(email):
@@ -241,6 +470,7 @@ def confirm_user_email(email):
     users.update_one({"email": email}, {"$set": user})
 
     return jsonify({"msg": "Email confirmed successfully."}), 200
+
 
 # ----------------------- Users -------------------------------
 
@@ -288,7 +518,7 @@ def precreate_workflow():
     # Insert workflow into database
     workflows.insert_one({
         "wid": workflow_id,
-        "status": 'Pending',
+        "status": 'Provisioning',
         "name": name,
         "ml_model": ml_model,
         "training_frequency": training_frequency,
@@ -718,6 +948,24 @@ echo ECS_CLUSTER={ecs_cluster_name} >> /etc/ecs/ecs.config
 @app.route("/workflows/delete/<workflow_id>", methods=["DELETE"])
 def delete_workflow(workflow_id):
     result = workflows.delete_one({"wid": workflow_id})
+    users.update_one(
+        {"workflows": workflow_id},
+        {"$pull": {"workflows": workflow_id}}
+    )
+
+    Try(lambda: terminate_instances(workflow_id))
+    Try(lambda: delete_auto_scaling_group(workflow_id))
+    Try(lambda: delete_load_balancer(workflow_id))
+    Try(lambda: delete_target_group(workflow_id))
+    Try(lambda: delete_launch_template(workflow_id))
+    Try(lambda: delete_server_service(workflow_id))
+    Try(lambda: delete_orchestrator_service(workflow_id))
+    Try(lambda: delete_ecs_cluster(workflow_id))
+    Try(lambda: deregister_server_task_definition(workflow_id))
+    Try(lambda: deregister_orchestrator_task_definition(workflow_id))
+    Try(lambda: delete_task_definition(workflow_id))
+    Try(lambda: delete_bucket(workflow_id))
+
     if result.deleted_count == 1:
         return jsonify({"msg": "Workflow deleted"}), 200
     else:
@@ -744,43 +992,156 @@ def get_workflow_status(workflow_id):
         'Failed').capitalize()
 
     new_status = current_status
-    if current_status == 'Pending' or current_status == 'Created':
+    if current_status == 'Provisioning' or current_status == 'Created':
         pass
-    elif ecs_cluster_active_services_count < 2 and current_status != 'Pending':
+    elif ecs_cluster_active_services_count < 2 and current_status != 'Provisioning':
         new_status = 'Failed'
-    elif server_task_last_status == 'Failed' and current_status != 'Pending':
+        workflows.update_one(
+            {"wid": workflow_id},
+            {"$set": {"status": new_status}}
+        )
+    elif server_task_last_status == 'Failed' and current_status != 'Provisioning':
         new_status = 'Failed'
-    elif orchestrator_task_last_status == 'Failed' and (current_status == 'Pending' or current_status == 'Created'):
+        workflows.update_one(
+            {"wid": workflow_id},
+            {"$set": {"status": new_status}}
+        )
+    elif orchestrator_task_last_status == 'Failed' and (
+            current_status == 'Provisioning' or current_status == 'Created'):
         pass
     elif orchestrator_task_last_status == 'Failed' and current_status == 'Running':
         new_status = 'Canceled'
+        workflows.update_one(
+            {"wid": workflow_id},
+            {"$set": {"status": new_status}}
+        )
     elif orchestrator_task_last_status != 'Failed' and orchestrator_task_last_status != current_status:
         new_status = orchestrator_task_last_status
+        workflows.update_one(
+            {"wid": workflow_id},
+            {"$set": {"status": new_status}}
+        )
     else:
         pass
-
-    workflows.update_one(
-        {"wid": workflow_id},
-        {"$set": {"status": new_status}}
-    )
 
     return jsonify({"id": workflow_id, "status": new_status}), 200
 
 
+@app.route("/workflows/register/cancel/<workflow_id>", methods=["POST"])
+def register_workflow_cancel(workflow_id):
+    workflows.update_one(
+        {"wid": workflow_id},
+        {"$set": {"status": "Canceling"}}
+    )
+    return jsonify(
+        {
+            "message": f"Workflow {workflow_id} registered to cancel",
+            "id": workflow_id
+        }
+    ), 200
+
+
 @app.route("/workflows/cancel/<workflow_id>", methods=["POST"])
 def cancel_workflow(workflow_id):
-    # Here you can add the logic to cancel the workflow with the given ID
-    # Change its state to "canceled"
-    # For now, let's just return a simple message
-    return jsonify({"message": f"Workflow {workflow_id} is canceled"}), 200
+    task_arns = ecs_client.list_tasks(
+        cluster=f'fl-ecs-{workflow_id}',
+        serviceName=f'fl-orchestrator-service-{workflow_id}'
+    )['taskArns']
+
+    container_instance_arn = ecs_client.describe_tasks(
+        cluster=f'fl-ecs-{workflow_id}',
+        tasks=task_arns
+    )['tasks'][0]['containerInstanceArn']
+
+    instance_id = ecs_client.describe_container_instances(
+        cluster=f'fl-ecs-{workflow_id}',
+        containerInstances=[container_instance_arn]
+    )['containerInstances'][0]['ec2InstanceId']
+
+    # Update orchestrator service desired count to 0
+    ecs_client.update_service(
+        cluster=f'fl-ecs-{workflow_id}',
+        service=f'fl-orchestrator-service-{workflow_id}',
+        desiredCount=0
+    )
+
+    # Update auto scaling group
+    asg_client.update_auto_scaling_group(
+        AutoScalingGroupName=f'Infra-ECS-Cluster-fl-ecs-{workflow_id}-ASG',
+        MinSize=0,
+        MaxSize=2,
+        DesiredCapacity=1
+    )
+
+    # Terminate instance
+    ec2_client.terminate_instances(
+        InstanceIds=[instance_id]
+    )
+
+    workflows.update_one(
+        {"wid": workflow_id},
+        {"$set": {"status": "Canceled"}}
+    )
+
+    return jsonify(
+        {
+            "message": f"Workflow {workflow_id} is canceled",
+            "id": workflow_id
+        }
+    ), 200
+
+
+@app.route("/workflows/register/run/<workflow_id>", methods=["POST"])
+def register_workflow_run(workflow_id):
+    workflows.update_one(
+        {"wid": workflow_id},
+        {"$set": {"status": "Provisioning"}}
+    )
+    return jsonify(
+        {
+            "message": f"Workflow {workflow_id} registered to run",
+            "id": workflow_id
+        }
+    ), 200
 
 
 @app.route("/workflows/run/<workflow_id>", methods=["POST"])
 def run_workflow(workflow_id):
-    # Here you can add the logic to run the workflow with the given ID
-    # Change its state to 'running'
-    # For now, let's just return a simple message
-    return jsonify({"message": f"Workflow {workflow_id} is canceled"}), 200
+    # update ASG desired capacity
+    asg_client.update_auto_scaling_group(
+        AutoScalingGroupName=f'Infra-ECS-Cluster-fl-ecs-{workflow_id}-ASG',
+        DesiredCapacity=2
+    )
+    # wait for container provisioning
+    time.sleep(45)
+    # update service desired count
+    ecs_client.update_service(
+        cluster=f'fl-ecs-{workflow_id}',
+        service=f'fl-orchestrator-service-{workflow_id}',
+        desiredCount=1
+    )
+    # wait for orchestrator to start
+    time.sleep(45)
+
+    workflows.update_one(
+        {"wid": workflow_id},
+        {"$set": {"status": "Running"}}
+    )
+
+    return jsonify(
+        {
+            "message": f"Workflow {workflow_id} is running",
+            "id": workflow_id
+        }
+    ), 200
+
+
+@app.route("/workflows/logs/<workflow_id>", methods=["GET"])
+def get_workflow_logs(workflow_id):
+    logs = Try(lambda: get_orchestrator_logs(workflow_id)).get_or_else([])
+
+    return jsonify(logs), 200
+
 
 # ----------------------- Workflows ---------------------------
 
@@ -791,6 +1152,7 @@ def get_models_count():
     count = workflows.count_documents({})
     return jsonify({"count": count})
 
+
 @app.route("/models/getAll", methods=["GET"])
 def get_all_models():
     all_models = list(models.find({}))
@@ -799,64 +1161,145 @@ def get_all_models():
         models_list.append({
             "id": str(model["mid"]),
             "name": model["name"],
-            "filename": model["filename"]
+            "filename": model["filename"],
+            "description": model["description"],
+            "features": str(model["features"]),
+            "labels": str(model["labels"]),
         })
     return jsonify(models_list)
+
+
+@app.route("/models/getUserModels/<user_email>", methods=["GET"])
+def get_user_models(user_email):
+    user_models = users.find_one({"email": user_email})["models"]
+    models_list = []
+    for model_id in user_models:
+        model = models.find_one({"mid": model_id})
+        models_list.append({
+            "id": str(model["mid"]),
+            "name": model["name"],
+            "filename": model["filename"],
+        })
+
+    return jsonify(models_list), 200
+
 
 # TODO: update the method after decide details about models
 @app.route("/models/insert", methods=["POST"])
 def insert_model():
     name = request.json.get("name", None)
+    description = request.json.get("description", None)
     filename = request.json.get("filename", None)
+    user_email = request.json.get("user_email", None)
 
     if not name:
         return jsonify({"msg": "Missing model name"}), 400
+    if not description:
+        return jsonify({"msg": "Missing model description"}), 400
     if not filename:
         return jsonify({"msg": "Missing filename"}), 400
+    if not user_email:
+        return jsonify({"msg": "Missing user email"}), 400
 
     model = models.find_one({"name": name})
     if model:
         return jsonify({"msg": "Model already registered"}), 400
 
+    model = models.find_one({"filename": filename})
+    if model:
+        return jsonify({"msg": "Model already registered"}), 400
+
     model_id = str(uuid.uuid4())
-    models.insert_one({"mid": model_id, "name": name, "filename": filename})
+    models.insert_one(
+        {
+            "mid": model_id,
+            "name": name,
+            "description": description,
+            "filename": filename,
+            "created_at": datetime.now()
+        }
+    )
+    users.update_one(
+        {"email": user_email},
+        {"$push": {"models": model_id}}
+    )
+
     return jsonify({"msg": "Model created", "id": model_id}), 201
 
 
 @app.route("/models/delete/<model_id>", methods=["DELETE"])
 def delete_model(model_id):
+    filename = os.path.splitext(models.find_one({"mid": model_id})['filename'])[0]
     result = models.delete_one({"mid": model_id})
+    user_id = str(users.find_one({"models": model_id})["_id"])
+    users.update_one(
+        {"models": model_id},
+        {"$pull": {"models": model_id}}
+    )
+
+    Try(lambda: s3_client.delete_object(
+        Bucket=f'fl-models-{user_id}',
+        Key=f'{filename}.tflite'
+    ))
+
     if result.deleted_count == 1:
         return jsonify({"msg": "Model deleted"}), 200
     else:
         return jsonify({"msg": "Model not found"}), 404
-    
+
+
 @app.route('/upload/model', methods=['POST'])
 def upload_file():
-    print("aiciiii")
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file part'})
+    user_email = request.form.get('user_email', None)
+    model_id = request.form.get('model_id', None)
+    if not user_email:
+        return jsonify({'error': 'Missing user email'}), 400
 
-    print("si aiciii")
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
+
     file = request.files['file']
 
     if file.filename == '':
-        return jsonify({'error': 'No selected file'})
-    
-    # Read the content of the file
-    file_content = file.read()
+        return jsonify({'error': 'No selected file'}), 400
 
-    # Process the file content (e.g., print or save to disk)
-    print("Content of the uploaded file:")
-    print(file_content.decode('utf-8'))  # Decode bytes to string assuming UTF-8 encoding
-    
-    print(f'File {file.filename}')
-    if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
-        return jsonify({'success': True, 'message': 'File uploaded successfully'})
-    else:
-        return jsonify({'error': 'Invalid file type'})
-    
+    if not allowed_file(file.filename):
+        return jsonify({'error': 'Invalid file type'}), 400
+
+    user_id = str(users.find_one({"email": user_email})["_id"])
+    temp_dir = tempfile.gettempdir()
+    file_path = os.path.join(temp_dir, file.filename)
+    file.save(file_path)
+    tflite_filepath = None
+
+    try:
+        model = tf.keras.models.load_model(file_path)
+        tflite_filepath, num_features, num_labels = create_tflite_model(model, os.path.splitext(file.filename)[0])
+
+        s3_client.upload_file(
+            tflite_filepath,
+            f'fl-models-{user_id}',
+            f'{os.path.splitext(file.filename)[0]}.tflite'
+        )
+
+        models.update_one(
+            {"mid": model_id},
+            {"$set": {"features": num_features, "labels": num_labels}}
+        )
+
+        return jsonify({'message': 'File uploaded and model loaded successfully'}), 201
+    except Exception as e:
+        print(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+    finally:
+        # Clean up the temporary file
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+        if tflite_filepath is not None and os.path.exists(tflite_filepath):
+            os.remove(tflite_filepath)
+
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
@@ -884,6 +1327,7 @@ def send_confirmation_email(user_email):
         server.starttls()
         server.login(FROM_EMAIL, "odyr rtxp vtda jrnk")
         server.sendmail(msg['From'], [msg['To']], msg.as_string())
+
 
 if __name__ == "__main__":
     app.run(debug=True)

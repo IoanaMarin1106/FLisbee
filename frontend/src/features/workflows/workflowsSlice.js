@@ -55,14 +55,29 @@ export const getWorkflowStatus = createAsyncThunk('workflows/getWorkflowStatus',
   return response.data;
 });
 
+export const getWorkflowLogs = createAsyncThunk('workflows/getWorkflowLogs', async (id) => {
+  const response = await axios.get(`http://localhost:5000/workflows/logs/${id}`);
+  return response.data;
+});
+
+export const registerWorkflowCancel = createAsyncThunk('workflow/registerWorkflowCancel', async (id) => {
+  const response = await axios.post(`http://localhost:5000/workflows/register/cancel/${id}`);
+  return response.data;
+});
+
 export const cancelWorkflow = createAsyncThunk('workflow/cancelWorkflow', async (id) => {
   const response = await axios.post(`http://localhost:5000/workflows/cancel/${id}`);
   return response.data; 
 });
 
+export const registerWorkflowRun = createAsyncThunk('workflow/registerWorkflowRun', async (id) => {
+  const response = await axios.post(`http://localhost:5000/workflows/register/run/${id}`);
+  return response.data;
+});
+
 export const runWorkflow = createAsyncThunk('workflow/runWorkflow', async (id) => {
   const response = await axios.post(`http://localhost:5000/workflows/run/${id}`);
-  return response.data; 
+  return response.data;
 });
 
 const workflowsSlice = createSlice({
@@ -72,6 +87,8 @@ const workflowsSlice = createSlice({
     state: 'idle',
     status: 'idle',
     error: null,
+    items: [],
+    logs: []
   },
   reducers: {
     // Add reducers if needed
@@ -117,12 +134,45 @@ const workflowsSlice = createSlice({
           workflow.id === id ? { ...workflow, status } : workflow
         );
       })
+      .addCase(getWorkflowLogs.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        state.logs = action.payload;
+      })
+      .addCase(registerWorkflowCancel.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        const id = action.payload.id;
+        const status = 'Canceling';
+        state.items = state.items.map(workflow =>
+          workflow.id === id ? { ...workflow, status } : workflow
+        );
+      })
       .addCase(cancelWorkflow.fulfilled, (state, action) => {
-        console.log(action.payload);
+        state.status = 'succeeded';
+        const id = action.payload.id;
+        const status = 'Canceled';
+        state.items = state.items.map(workflow =>
+          workflow.id === id ? { ...workflow, status } : workflow
+        );
       })
       .addCase(runWorkflow.fulfilled, (state, action) => {
-        console.log(action.payload);
-      });    
+        state.status = 'succeeded';
+        const id = action.payload.id;
+        const status = 'Running';
+        console.log("id: ", JSON.stringify(action.payload))
+        console.log("Items before: ", JSON.stringify(state.items))
+        state.items = state.items.map(workflow =>
+          workflow.id === id ? { ...workflow, status } : workflow
+        );
+        console.log("Items after: ", JSON.stringify(state.items))
+      })
+      .addCase(registerWorkflowRun.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        const id = action.payload.id;
+        const status = 'Provisioning';
+        state.items = state.items.map(workflow =>
+          workflow.id === id ? { ...workflow, status } : workflow
+        );
+      });
   },
 });
 
