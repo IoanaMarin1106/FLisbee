@@ -101,8 +101,12 @@ else:
 
 @app.route("/ping", methods=["GET"])
 def ping():
-    user_id = users.find_one({"email": "ciurezue@gmail.com"})["_id"]
-    return str(user_id)
+    # workflows.update_one(
+    #     {"wid": "kpJ511QEmWtK"},
+    #     {"$set": {"status": "Created"}}
+    # )
+    workflow = workflows.find_one({"wid": "kpJ511QEmWtK"})
+    return json.dumps(workflow, default=str)
 
 
 # End Debugging
@@ -145,12 +149,10 @@ def get_server_service_status(workflow_id):
         cluster=f'fl-ecs-{workflow_id}',
         serviceName=f'fl-server-service-{workflow_id}'
     )['taskArns']
-    print("server task_arns: ", task_arns)
     status = ecs_client.describe_tasks(
         cluster=f'fl-ecs-{workflow_id}',
         tasks=task_arns
     )['tasks'][0]['lastStatus']
-    print("server laststatus: ", status)
     return status
 
 
@@ -159,12 +161,10 @@ def get_orchestrator_service_status(workflow_id):
         cluster=f'fl-ecs-{workflow_id}',
         serviceName=f'fl-orchestrator-service-{workflow_id}'
     )['taskArns']
-    print("orchestrator task_arns: ", task_arns)
     status = ecs_client.describe_tasks(
         cluster=f'fl-ecs-{workflow_id}',
         tasks=task_arns
     )['tasks'][0]['lastStatus']
-    print("orchestrator laststatus: ", status)
     return status
 
 
@@ -178,6 +178,137 @@ def generate_random_string(length=12):
     characters = string.ascii_letters + string.digits
     random_string = ''.join(random.choice(characters) for _ in range(length))
     return random_string
+
+
+def empty_bucket(bucket_name):
+    response = s3_client.list_objects_v2(Bucket=bucket_name)
+
+    while 'Contents' in response:
+        for obj in response['Contents']:
+            s3_client.delete_object(Bucket=bucket_name, Key=obj['Key'])
+
+        if response['IsTruncated']:
+            response = s3_client.list_objects_v2(
+                Bucket=bucket_name,
+                ContinuationToken=response['NextContinuationToken']
+            )
+        else:
+            break
+
+
+def terminate_instances(workflow_id):
+    instances = asg_client.describe_auto_scaling_groups(
+        AutoScalingGroupNames=[f'Infra-ECS-Cluster-fl-ecs-{workflow_id}-ASG'],
+    )['AutoScalingGroups'][0]['Instances']
+    instanceIds = [instance['InstanceId'] for instance in instances]
+    ec2_client.terminate_instances(
+        InstanceIds=instanceIds
+    )
+
+
+def delete_auto_scaling_group(workflow_id):
+    asg_client.delete_auto_scaling_group(
+        AutoScalingGroupName=f'Infra-ECS-Cluster-fl-ecs-{workflow_id}-ASG',
+        ForceDelete=True
+    )
+
+
+def delete_load_balancer(workflow_id):
+    load_balancer_arn = elbv2_client.describe_load_balancers(
+        Names=[f'ecs-alb-{workflow_id}']
+    )['LoadBalancers'][0]['LoadBalancerArn']
+
+    elbv2_client.delete_load_balancer(
+        LoadBalancerArn=load_balancer_arn
+    )
+
+
+def delete_target_group(workflow_id):
+    target_group_arn = elbv2_client.describe_target_groups(
+        Names=[f'ecs-alb-targetgroup-{workflow_id}']
+    )['TargetGroups'][0]['TargetGroupArn']
+
+    elbv2_client.delete_target_group(
+        TargetGroupArn=target_group_arn
+    )
+
+
+def delete_launch_template(workflow_id):
+    ec2_client.delete_launch_template(
+        DryRun=False,
+        LaunchTemplateName=f'ECSLaunchTemplate_fl-ecs-{workflow_id}',
+    )
+
+
+def delete_server_service(workflow_id):
+    ecs_client.delete_service(
+        cluster=f'fl-ecs-{workflow_id}',
+        service=f'fl-server-service-{workflow_id}',
+        force=True
+    )
+
+
+def delete_orchestrator_service(workflow_id):
+    ecs_client.delete_service(
+        cluster=f'fl-ecs-{workflow_id}',
+        service=f'fl-orchestrator-service-{workflow_id}',
+        force=True
+    )
+
+
+def delete_ecs_cluster(workflow_id):
+    ecs_client.delete_cluster(
+        cluster=f'fl-ecs-{workflow_id}',
+    )
+
+
+def deregister_server_task_definition(workflow_id):
+    ecs_client.deregister_task_definition(
+        taskDefinition=f'fl-server-{workflow_id}:1'
+    )
+
+
+def deregister_orchestrator_task_definition(workflow_id):
+    ecs_client.deregister_task_definition(
+        taskDefinition=f'fl-orchestrator-{workflow_id}:1'
+    )
+
+
+def delete_task_definition(workflow_id):
+    ecs_client.delete_task_definitions(
+        taskDefinitions=[
+            f'fl-server-{workflow_id}:1',
+            f'fl-orchestrator-{workflow_id}:1'
+        ]
+    )
+
+
+def delete_bucket(workflow_id):
+    bucket_name = f'fl-workflow-{workflow_id.lower()}'
+    empty_bucket(bucket_name)
+    s3_client.delete_bucket(Bucket=bucket_name)
+
+
+def get_orchestrator_logs(workflow_id):
+    log_streams = logs_client.describe_log_streams(
+        logGroupName=f'/ecs/fl-orchestrator-{workflow_id}',
+        orderBy='LastEventTime',
+        descending=False,
+    )['logStreams']
+    log_stream_names = [log_stream['logStreamName'] for log_stream in log_streams]
+
+
+    logs = []
+    for log_stream_name in log_stream_names:
+        log_events = logs_client.get_log_events(
+            logGroupName=f'/ecs/fl-orchestrator-{workflow_id}',
+            logStreamName=log_stream_name,
+            startFromHead=True
+        )
+        for event in log_events['events']:
+            logs.append(f"[{timestamp_to_iso8601(event['timestamp'])}] {event['message']}")
+
+    return logs
 
 
 # API routes
@@ -288,7 +419,7 @@ def precreate_workflow():
     # Insert workflow into database
     workflows.insert_one({
         "wid": workflow_id,
-        "status": 'Pending',
+        "status": 'Provisioning',
         "name": name,
         "ml_model": ml_model,
         "training_frequency": training_frequency,
@@ -718,6 +849,24 @@ echo ECS_CLUSTER={ecs_cluster_name} >> /etc/ecs/ecs.config
 @app.route("/workflows/delete/<workflow_id>", methods=["DELETE"])
 def delete_workflow(workflow_id):
     result = workflows.delete_one({"wid": workflow_id})
+    users.update_one(
+        {"workflows": workflow_id},
+        {"$pull": {"workflows": workflow_id}}
+    )
+
+    Try(lambda: terminate_instances(workflow_id))
+    Try(lambda: delete_auto_scaling_group(workflow_id))
+    Try(lambda: delete_load_balancer(workflow_id))
+    Try(lambda: delete_target_group(workflow_id))
+    Try(lambda: delete_launch_template(workflow_id))
+    Try(lambda: delete_server_service(workflow_id))
+    Try(lambda: delete_orchestrator_service(workflow_id))
+    Try(lambda: delete_ecs_cluster(workflow_id))
+    Try(lambda: deregister_server_task_definition(workflow_id))
+    Try(lambda: deregister_orchestrator_task_definition(workflow_id))
+    Try(lambda: delete_task_definition(workflow_id))
+    Try(lambda: delete_bucket(workflow_id))
+
     if result.deleted_count == 1:
         return jsonify({"msg": "Workflow deleted"}), 200
     else:
@@ -744,43 +893,155 @@ def get_workflow_status(workflow_id):
         'Failed').capitalize()
 
     new_status = current_status
-    if current_status == 'Pending' or current_status == 'Created':
+    if current_status == 'Provisioning' or current_status == 'Created':
         pass
-    elif ecs_cluster_active_services_count < 2 and current_status != 'Pending':
+    elif ecs_cluster_active_services_count < 2 and current_status != 'Provisioning':
         new_status = 'Failed'
-    elif server_task_last_status == 'Failed' and current_status != 'Pending':
+        workflows.update_one(
+            {"wid": workflow_id},
+            {"$set": {"status": new_status}}
+        )
+    elif server_task_last_status == 'Failed' and current_status != 'Provisioning':
         new_status = 'Failed'
-    elif orchestrator_task_last_status == 'Failed' and (current_status == 'Pending' or current_status == 'Created'):
+        workflows.update_one(
+            {"wid": workflow_id},
+            {"$set": {"status": new_status}}
+        )
+    elif orchestrator_task_last_status == 'Failed' and (current_status == 'Provisioning' or current_status == 'Created'):
         pass
     elif orchestrator_task_last_status == 'Failed' and current_status == 'Running':
         new_status = 'Canceled'
+        workflows.update_one(
+            {"wid": workflow_id},
+            {"$set": {"status": new_status}}
+        )
     elif orchestrator_task_last_status != 'Failed' and orchestrator_task_last_status != current_status:
         new_status = orchestrator_task_last_status
+        workflows.update_one(
+            {"wid": workflow_id},
+            {"$set": {"status": new_status}}
+        )
     else:
         pass
-
-    workflows.update_one(
-        {"wid": workflow_id},
-        {"$set": {"status": new_status}}
-    )
 
     return jsonify({"id": workflow_id, "status": new_status}), 200
 
 
+@app.route("/workflows/register/cancel/<workflow_id>", methods=["POST"])
+def register_workflow_cancel(workflow_id):
+    workflows.update_one(
+        {"wid": workflow_id},
+        {"$set": {"status": "Canceling"}}
+    )
+    return jsonify(
+        {
+            "message": f"Workflow {workflow_id} registered to cancel",
+            "id": workflow_id
+        }
+    ), 200
+
+
 @app.route("/workflows/cancel/<workflow_id>", methods=["POST"])
 def cancel_workflow(workflow_id):
-    # Here you can add the logic to cancel the workflow with the given ID
-    # Change its state to "canceled"
-    # For now, let's just return a simple message
-    return jsonify({"message": f"Workflow {workflow_id} is canceled"}), 200
+    task_arns = ecs_client.list_tasks(
+        cluster=f'fl-ecs-{workflow_id}',
+        serviceName=f'fl-orchestrator-service-{workflow_id}'
+    )['taskArns']
+
+    container_instance_arn = ecs_client.describe_tasks(
+        cluster=f'fl-ecs-{workflow_id}',
+        tasks=task_arns
+    )['tasks'][0]['containerInstanceArn']
+
+    instance_id = ecs_client.describe_container_instances(
+        cluster=f'fl-ecs-{workflow_id}',
+        containerInstances=[container_instance_arn]
+    )['containerInstances'][0]['ec2InstanceId']
+
+    # Update orchestrator service desired count to 0
+    ecs_client.update_service(
+        cluster=f'fl-ecs-{workflow_id}',
+        service=f'fl-orchestrator-service-{workflow_id}',
+        desiredCount=0
+    )
+
+    # Update auto scaling group
+    asg_client.update_auto_scaling_group(
+        AutoScalingGroupName=f'Infra-ECS-Cluster-fl-ecs-{workflow_id}-ASG',
+        MinSize=0,
+        MaxSize=2,
+        DesiredCapacity=1
+    )
+
+    # Terminate instance
+    ec2_client.terminate_instances(
+        InstanceIds=[instance_id]
+    )
+
+    workflows.update_one(
+        {"wid": workflow_id},
+        {"$set": {"status": "Canceled"}}
+    )
+
+    return jsonify(
+        {
+            "message": f"Workflow {workflow_id} is canceled",
+            "id": workflow_id
+        }
+    ), 200
+
+
+@app.route("/workflows/register/run/<workflow_id>", methods=["POST"])
+def register_workflow_run(workflow_id):
+    workflows.update_one(
+        {"wid": workflow_id},
+        {"$set": {"status": "Provisioning"}}
+    )
+    return jsonify(
+        {
+            "message": f"Workflow {workflow_id} registered to run",
+            "id": workflow_id
+        }
+    ), 200
 
 
 @app.route("/workflows/run/<workflow_id>", methods=["POST"])
 def run_workflow(workflow_id):
-    # Here you can add the logic to run the workflow with the given ID
-    # Change its state to 'running'
-    # For now, let's just return a simple message
-    return jsonify({"message": f"Workflow {workflow_id} is canceled"}), 200
+    # update ASG desired capacity
+    asg_client.update_auto_scaling_group(
+        AutoScalingGroupName=f'Infra-ECS-Cluster-fl-ecs-{workflow_id}-ASG',
+        DesiredCapacity=2
+    )
+    # wait for container provisioning
+    time.sleep(45)
+    # update service desired count
+    ecs_client.update_service(
+        cluster=f'fl-ecs-{workflow_id}',
+        service=f'fl-orchestrator-service-{workflow_id}',
+        desiredCount=1
+    )
+    # wait for orchestrator to start
+    time.sleep(45)
+
+    workflows.update_one(
+        {"wid": workflow_id},
+        {"$set": {"status": "Running"}}
+    )
+
+    return jsonify(
+        {
+            "message": f"Workflow {workflow_id} is running",
+            "id": workflow_id
+        }
+    ), 200
+
+
+@app.route("/workflows/logs/<workflow_id>", methods=["GET"])
+def get_workflow_logs(workflow_id):
+    logs = Try(lambda: get_orchestrator_logs(workflow_id)).get_or_else([])
+
+    return jsonify(logs), 200
+
 
 # ----------------------- Workflows ---------------------------
 

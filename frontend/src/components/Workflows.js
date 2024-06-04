@@ -4,7 +4,7 @@ import {
   getWorkflowsCount,
   createWorkflow,
   fetchAllWorkflows,
-  deleteWorkflow, registerWorkflow,
+  deleteWorkflow, registerWorkflow, registerWorkflowRun, registerWorkflowCancel,
 } from '../features/workflows/workflowsSlice';
 import {
   Typography,
@@ -237,14 +237,16 @@ const Workflows = () => {
   };
 
   const handleCancelWorkflow = async (id) => {
-    await dispatch(cancelWorkflow(id));
-      console.log("cancel workflow");
+    dispatch(registerWorkflowCancel(id)).then(() => {
+      dispatch(cancelWorkflow(id))
+    });
   };
   
   const handleRunWorkflow = async (id, e) => {
     e.stopPropagation(); // Prevents the click event from bubbling up to the card
-    await dispatch(runWorkflow(id));
-      console.log("run workflow");
+    dispatch(registerWorkflowRun(id)).then(() => {
+      dispatch(runWorkflow(id))
+    });
   };
 
   const handleIncrementFrequency = () => {
@@ -369,12 +371,12 @@ const Workflows = () => {
                     <Button startIcon={<EditIcon />} color="primary" onClick={() => {}}>
                       Edit
                     </Button>
-                    {(workflowStatus === 'running' || workflowStatus === 'pending') && (
+                    {(workflowStatus === 'Running' || workflowStatus === 'Provisioning' || workflowStatus === 'Pending') && (
                       <Button startIcon={<CancelIcon />} onClick={() => handleCancelWorkflow(selectedWorkflow.id)} color="secondary">
                         Cancel
                       </Button>
                     )}
-                    {workflowStatus === 'created' && (
+                    {(workflowStatus === 'Created' || workflowStatus === 'Canceled' || workflowStatus === 'Failed') && (
                       <Button startIcon={<PlayArrowIcon />} onClick={() => handleRunWorkflow(selectedWorkflow.id)} color="secondary">
                         Run
                       </Button>
@@ -417,7 +419,7 @@ const Workflows = () => {
                 )}
                 {showLogs && (
                   <div>
-                    <LogsCard logs="HERE WILL BE LOGS" />
+                    <LogsCard workflow_id={selectedWorkflow.id}/>
                   </div>
                 )}
               </CardContent>
@@ -438,9 +440,16 @@ const Workflows = () => {
                       <Typography variant="body1">{workflow.status}</Typography>
                     </div>
                     <CardActions className={classes.workflowActions}>
-                      <IconButton color="primary" onClick={(e) => handleRunWorkflow(workflow.id, e)}>
-                        <PlayArrowIcon />
-                      </IconButton>
+                      {(workflowStatus === 'Running' || workflowStatus === 'Provisioning' || workflowStatus === 'Pending') && (
+                        <IconButton color="primary" onClick={(e) => handleCancelWorkflow(workflow.id, e)}>
+                          <CancelIcon />
+                        </IconButton>
+                      )}
+                      {(workflowStatus === 'Created' || workflowStatus === 'Canceled' || workflowStatus === 'Failed') && (
+                        <IconButton color="primary" onClick={(e) => handleRunWorkflow(workflow.id, e)}>
+                          <PlayArrowIcon />
+                        </IconButton>
+                      )}
                       <IconButton onClick={(e) => handleDeleteWorkflow(workflow.id, e)}>
                         <DeleteIcon />
                       </IconButton>
