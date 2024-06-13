@@ -81,16 +81,9 @@ const modelsSlice = createSlice({
           state.status = 'succeeded';
           state.userModels = action.payload;
         })
-        .addCase(fetchModels.pending, (state) => {
-            state.status = 'loading';
-        })
         .addCase(fetchModels.fulfilled, (state, action) => {
             state.status = 'succeeded';
             state.items = action.payload;
-        })
-        .addCase(fetchModels.rejected, (state, action) => {
-            state.status = 'failed';
-            state.error = action.error.message;
         })
         .addCase(addModel.fulfilled, (state, action) => {
           console.log(action.payload);

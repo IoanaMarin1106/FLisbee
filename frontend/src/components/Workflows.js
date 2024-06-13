@@ -207,7 +207,7 @@ const Workflows = () => {
   const [showAddWorkflowDialog, setShowAddWorkflowDialog] = useState(false);
   const [workflowNameInput, setWorkflowNameInput] = useState('');
   const [trainingFrequency, setTrainingFrequency] = useState(1);
-  const [selectedModel, setSelectedModel] = useState(userModels[0] ? userModels[0].id : null);
+  const [selectedModel, setSelectedModel] = useState(userModels[0] ? userModels[0].filename.split('.')[0] : null);
 
   const [selectedWorkflow, setSelectedWorkflow] = useState(null);
   const [showOverview, setShowOverview] = useState(false);
@@ -416,7 +416,7 @@ const Workflows = () => {
             >
               {
                 userModels.map((model) => (
-                  <MenuItem key={model.id} value={model.id}>{model.name}</MenuItem>
+                  <MenuItem key={model.filename.split('.')[0]} value={model.filename.split('.')[0]}>{model.name}</MenuItem>
                 ))
               }
             </Select>

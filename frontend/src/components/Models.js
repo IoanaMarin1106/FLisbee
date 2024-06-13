@@ -53,10 +53,8 @@ const Models = () => {
 
 
   useEffect(() => {
-    if (status === 'idle') {
       dispatch(fetchModels());
-    }
-  }, [status, dispatch]);
+  }, [dispatch]);
 
   const handleAddModel = async () => {
       dispatch(addModel(

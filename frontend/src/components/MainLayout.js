@@ -8,7 +8,7 @@ import ProjectOverview from './ProjectOverview';
 
 const MainLayout = () => {
   const [view, setView] = useState('');
-  const username = localStorage.getItem('username');
+  const firstName = localStorage.getItem('first_name');
 
   const handleProjectClick = () => {
     setView('projectoverview');
@@ -29,7 +29,7 @@ const MainLayout = () => {
         <UserMenu />
         {view === 'workflows' && <Workflows />}
         {view === 'models' && <Models />}
-        {view === 'projectoverview' && <ProjectOverview username={username} />}
+        {view === 'projectoverview' && <ProjectOverview username={firstName} />}
       </Box>
     </Box>
   );

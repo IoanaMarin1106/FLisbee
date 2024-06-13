@@ -33,13 +33,15 @@ const useStyles = makeStyles((theme) => ({
 const Register = () => {
   const classes = useStyles();
   const dispatch = useDispatch();
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isRegistered, setIsRegistered] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    dispatch(registerUser({ email, password }));
+    dispatch(registerUser({ email, password, firstName, lastName }));
     setIsRegistered(true);
   };
 
@@ -55,6 +57,28 @@ const Register = () => {
             Register
           </Typography>
           <form onSubmit={handleSubmit} className={classes.form}>
+            <TextField
+              variant="outlined"
+              margin="normal"
+              required
+              fullWidth
+              label="First Name"
+              autoComplete="given-name"
+              autoFocus
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+            />
+            <TextField
+              variant="outlined"
+              margin="normal"
+              required
+              fullWidth
+              label="Last Name"
+              autoComplete="family-name"
+              autoFocus
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+            />
             <TextField
               variant="outlined"
               margin="normal"

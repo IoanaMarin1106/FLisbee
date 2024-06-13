@@ -5,17 +5,19 @@ export const loginUser = createAsyncThunk(
   'auth/loginUser',
   async ({ email, password }) => {
     const response = await axios.post('http://localhost:5000/login', { email, password });
-    const { access_token, username } = response.data;
+    const { access_token, username, first_name, last_name } = response.data;
     localStorage.setItem('token', access_token); // Save token in local storage
     localStorage.setItem('username', username); // Save username in local storage
+    localStorage.setItem('first_name', first_name); // Save first name in local storage
+    localStorage.setItem('last_name', last_name); // Save last name in local storage
     return response.data;
   }
 );
 
 export const registerUser = createAsyncThunk(
   'auth/registerUser',
-  async ({ email, password }) => {
-    const response = await axios.post('http://localhost:5000/register', { email, password });
+  async ({ email, password, firstName, lastName }) => {
+    const response = await axios.post('http://localhost:5000/register', { first_name: firstName, last_name: lastName, email, password});
     return response.data;
   }
 );

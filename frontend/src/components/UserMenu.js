@@ -23,7 +23,7 @@ const CustomAvatar = styled(Avatar)(({ theme }) => ({
 
 const UserMenu = () => {
   const [anchorEl, setAnchorEl] = useState(null);
-  const username = localStorage.getItem('username');
+  const firstName = localStorage.getItem('first_name');
   const dispatch = useDispatch();
   const navigate = useNavigate()
 
@@ -43,7 +43,7 @@ const UserMenu = () => {
   return (
     <div style={{ position: 'absolute', top: 0, right: 0 }}>
       <CustomIconButton onClick={handleMenuOpen}>
-        <CustomAvatar alt={username} src="/static/images/avatar/1.jpg" />
+        <CustomAvatar alt={firstName} src="/static/images/avatar/1.jpg" />
       </CustomIconButton>
       <Menu
         anchorEl={anchorEl}

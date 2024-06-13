@@ -113,6 +113,64 @@ def ping():
     return json.dumps(workflow, default=str)
 
 
+@app.route("/debug/models/insert", methods=["POST"])
+def debug_insert_model():
+    payload = request.get_json()
+    mid = payload.get("mid", None)
+    name = payload.get("name", None)
+    description = payload.get("description", None)
+    filename = payload.get("filename", None)
+    created_at = datetime.fromisoformat(payload.get("created_at", None))
+    features = payload.get("features", None)
+    labels = payload.get("labels", None)
+
+    models.insert_one({
+        "mid": mid,
+        "name": name,
+        "description": description,
+        "filename": filename,
+        "created_at": created_at,
+        "features": features,
+        "labels": labels
+    })
+
+    users.update_one(
+        {"email": "ciurezue@gmail.com"},
+        {"$push": {"models": mid}}
+    )
+
+    return jsonify({"msg": "Model inserted"}), 201
+
+
+@app.route("/debug/workflows/insert", methods=["POST"])
+def debug_insert_workflow():
+    payload = request.get_json()
+    wid = payload.get("wid", None)
+    status = payload.get("status", None)
+    name = payload.get("name", None)
+    ml_model = payload.get("ml_model", None)
+    training_frequency = payload.get("training_frequency", None)
+    server_hostname = payload.get("server_hostname", None)
+    created_at = datetime.fromisoformat(payload.get("created_at", None))
+
+    workflows.insert_one({
+        "wid": wid,
+        "status": status,
+        "name": name,
+        "ml_model": ml_model,
+        "training_frequency": training_frequency,
+        "server_hostname": server_hostname,
+        "created_at": created_at
+    })
+
+    users.update_one(
+        {"email": "ciurezue@gmail.com"},
+        {"$push": {"workflows": wid}}
+    )
+
+    return jsonify({"msg": "Workflow inserted"}), 201
+
+
 # End Debugging
 
 # Utilities
@@ -419,6 +477,8 @@ def health():
 def register():
     email = request.json.get("email", None)
     password = request.json.get("password", None)
+    first_name = request.json.get("first_name", None)
+    last_name = request.json.get("last_name", None)
     if not email or not password:
         return jsonify({"msg": "Missing email or password"}), 400
 
@@ -429,7 +489,7 @@ def register():
     hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
     email_confirmed = False
     user_id = users.insert_one(
-        {"email": email, "password": hashed_password, "email_confirmed": email_confirmed}).inserted_id
+        {"email": email, "first_name": first_name, "last_name": last_name, "password": hashed_password, "email_confirmed": email_confirmed}).inserted_id
     send_confirmation_email(email)
     return jsonify({"msg": "User created. Please check your email to confirm your address.", "id": str(user_id)}), 201
 
@@ -446,7 +506,7 @@ def login():
         return jsonify({"msg": "Bad email or password"}), 401
 
     access_token = create_access_token(identity=str(user["_id"]))
-    return jsonify(access_token=access_token, username=email), 200
+    return jsonify(access_token=access_token, username=email, first_name=user["first_name"], last_name=user["last_name"]), 200
 
 
 @app.route('/confirmed/<email>', methods=["GET"])
@@ -748,6 +808,12 @@ echo ECS_CLUSTER={ecs_cluster_name} >> /etc/ecs/ecs.config
                     },
                 ],
                 'essential': True,
+                'environment': [
+                    {
+                        'name': 'BUCKET_NAME',
+                        'value': f'fl-workflow-{workflow_id.lower()}'
+                    }
+                ],
                 'logConfiguration': {
                     'logDriver': 'awslogs',
                     'options': {
@@ -861,6 +927,10 @@ echo ECS_CLUSTER={ecs_cluster_name} >> /etc/ecs/ecs.config
                     {
                         'name': 'FREQUENCY_HOURS',
                         'value': '2'
+                    },
+                    {
+                        'name': 'BUCKET_NAME',
+                        'value': f'fl-workflow-{workflow_id.lower()}'
                     }
                 ],
                 'logConfiguration': {
@@ -1152,7 +1222,7 @@ def get_workflow_logs(workflow_id):
 
 @app.route("/models/count", methods=["GET"])
 def get_models_count():
-    count = workflows.count_documents({})
+    count = models.count_documents({})
     return jsonify({"count": count})
 
 
